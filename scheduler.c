@@ -3,7 +3,7 @@
 #include "scheduler.h"
 
 // 전역 스케줄러 인스턴스
-static Scheduler scheduler;
+Scheduler scheduler;
 
 // 큐 초기화
 void init_queue(Queue* queue) {

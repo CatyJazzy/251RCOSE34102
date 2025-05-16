@@ -43,6 +43,9 @@ typedef struct {
     SchedulingAlgorithm current_algorithm;
 } Scheduler;
 
+// 전역 스케줄러 인스턴스 선언
+extern Scheduler scheduler;
+
 // 스케줄러 관련 함수 선언
 void init_scheduler(void);
 void config_scheduler(SchedulingAlgorithm algorithm, int time_quantum);
