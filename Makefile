@@ -1,29 +1,24 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -g
-LDFLAGS = 
+CFLAGS = -Wall -Wextra -I./include
+SRC_DIR = src
+OBJ_DIR = obj
+BIN_DIR = .
 
-SRCS = main.c process.c scheduler.c utils.c
-OBJS = $(SRCS:.c=.o)
-TARGET = cpu_scheduler
+SRCS = $(wildcard $(SRC_DIR)/*.c)
+OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
+TARGET = $(BIN_DIR)/cpu_scheduler
 
-TEST_SRCS = test_scheduler.c process.c scheduler.c utils.c
-TEST_OBJS = $(TEST_SRCS:.c=.o)
-TEST_TARGET = test_scheduler
-
-.PHONY: all clean test
+.PHONY: all clean
 
 all: $(TARGET)
 
-test: $(TEST_TARGET)
-
 $(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
+	@mkdir -p $(OBJ_DIR)
+	$(CC) $(OBJS) -o $@
 
-$(TEST_TARGET): $(TEST_OBJS)
-	$(CC) $(TEST_OBJS) -o $(TEST_TARGET) $(LDFLAGS)
-
-%.o: %.c
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	@mkdir -p $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJS) $(TARGET) $(TEST_OBJS) $(TEST_TARGET) 
+	rm -rf $(OBJ_DIR) $(TARGET)
