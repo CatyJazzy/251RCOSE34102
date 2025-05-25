@@ -1,4 +1,5 @@
 #include "scheduler.h"
+#include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -111,46 +112,15 @@ void schedule_sjf_np(Scheduler* scheduler) {
 
     while(terminated_process_cnt < scheduler->process_cnt) {
         // 도착한 프로세스 확인함
-        for (int i=0; i<scheduler->process_cnt; i++) {
-            if (scheduler->process_arr[i]->arrival_time == current_simulation_time && scheduler->process_arr[i]->state == NEW) {
-                scheduler->ready_queue[scheduler->ready_queue_cnt++] = scheduler->process_arr[i];
-                scheduler->process_arr[i]->state = READY;
-            }
-        }
-
-        // I/O작업을 처리함
-        for (int i=0; i<scheduler->waiting_queue_cnt; i++) {
-            Process* process = scheduler->waiting_queue[i]; // io작업 처리할 프로세스
-            process->io_remaining_time--;
-            
-            // 완료되었을 때
-            if (process->io_remaining_time <= 0) {
-                process->is_doing_io = false;
-                
-                if(process->remaining_time > 0) {
-                    scheduler->ready_queue[scheduler->ready_queue_cnt++] = process;
-                    process->state = READY;
-                } else if (process->current_io_idx >= process->io_count) {
-                    process->state = TERMINATED;
-                    terminated_process_cnt++;
-                    printf("P%d가 종료되었습니다.\n", process->pid);
-                }
-                
-                // waiting-Q 제거로직
-                for (int j=i; j<scheduler->waiting_queue_cnt-1; j++) {
-                    scheduler->waiting_queue[j] = scheduler->waiting_queue[j+1];
-                }
-                scheduler->waiting_queue_cnt--;
-                i--; 
-            }
-        }
+        check_and_add_arrived_processes(scheduler, current_simulation_time);
+        process_io_operations(scheduler, &terminated_process_cnt);
         
         if (scheduler->ready_queue_cnt > 0) {
             Process* current_process = scheduler->ready_queue[0]; // 임시 설정
 
             for (int i=0; i<scheduler->ready_queue_cnt; i++) {
                 if (scheduler->ready_queue[i]->remaining_time < current_process->remaining_time) {
-                    current_process = scheduler->ready_queue[i];
+                    current_process = scheduler->ready_queue[i]; // Shorted Job 프로세스 선택
                 }
             }
 
@@ -158,41 +128,21 @@ void schedule_sjf_np(Scheduler* scheduler) {
             current_process->remaining_time -= 1;   
 
              int is_moved_to_waiting = false;
+            handle_io_task_of_process(current_process, scheduler, &is_moved_to_waiting);
 
-            // io작업 처리 (요청시점 동일한 경우를 위한 루프)
-            if (current_process->current_io_idx < current_process->io_count && 
-                    current_process->io_request_times[current_process->current_io_idx] == current_process->cpu_burst_time - current_process->remaining_time) {
-
-                current_process->is_doing_io = true;
-                current_process->io_remaining_time = current_process->io_burst_times[current_process->current_io_idx];
-                current_process->state = WAITING;
-                scheduler->waiting_queue[scheduler->waiting_queue_cnt++] = current_process;
-                current_process->current_io_idx++;  // 다음 io로 인덱스 변경
-                is_moved_to_waiting = true;
-            }
-
-            // ready-Q 제거
             if (is_moved_to_waiting) {
-                for (int j=0; j<scheduler->ready_queue_cnt-1; j++) {
-                    scheduler->ready_queue[j] = scheduler->ready_queue[j+1];
-                }
-                scheduler->ready_queue_cnt--;
+                // ready-Q 제거
+                remove_from_ready_queue(scheduler, 0);
             } else if (current_process ->remaining_time <= 0 &&current_process->is_doing_io == false) {
                 current_process->state = TERMINATED;
                 terminated_process_cnt++;
                 printf("P%d가 종료되었습니다.\n", current_process->pid);
-
-                // ready-Q 제거로직
-                for (int j=0; j<scheduler->ready_queue_cnt-1; j++) {
-                    scheduler->ready_queue[j] = scheduler->ready_queue[j+1];
-                }
-                scheduler->ready_queue_cnt--;
-            }   
+                remove_from_ready_queue(scheduler, 0);
+            }
         }
         printf("현재 시간: %d\n", current_simulation_time);
         current_simulation_time++;
     }
-
 }
 
 
@@ -202,38 +152,8 @@ void schedule_fcfs(Scheduler* scheduler) {
 
     while (terminated_process_cnt < scheduler->process_cnt) {
         // 도착한 프로세스 확인함
-        for (int i=0; i<scheduler->process_cnt; i++) {
-            if (scheduler->process_arr[i]->arrival_time == current_simulation_time && scheduler->process_arr[i]->state == NEW) {
-                scheduler->ready_queue[scheduler->ready_queue_cnt++] = scheduler->process_arr[i];
-                scheduler->process_arr[i]->state = READY;
-            }
-        }
-
-        for (int i=0; i<scheduler->waiting_queue_cnt; i++) {
-            Process* process = scheduler->waiting_queue[i]; // io작업 처리할 프로세스
-            process->io_remaining_time--;
-            
-            // 완료되었을 때
-            if (process->io_remaining_time <= 0) {
-                process->is_doing_io = false;
-                
-                if(process->remaining_time > 0) {
-                    scheduler->ready_queue[scheduler->ready_queue_cnt++] = process;
-                    process->state = READY;
-                } else if (process->current_io_idx >= process->io_count) {
-                    process->state = TERMINATED;
-                    terminated_process_cnt++;
-                    printf("P%d가 종료되었습니다.\n", process->pid);
-                }
-                
-                // waiting-Q 제거로직
-                for (int j=i; j<scheduler->waiting_queue_cnt-1; j++) {
-                    scheduler->waiting_queue[j] = scheduler->waiting_queue[j+1];
-                }
-                scheduler->waiting_queue_cnt--;
-                i--; 
-            }
-        }
+        check_and_add_arrived_processes(scheduler, current_simulation_time);
+        process_io_operations(scheduler, &terminated_process_cnt);
 
         if (scheduler->ready_queue_cnt > 0) {
             Process* process = scheduler->ready_queue[0]; // FCFS이므로 맨 앞에 있는 프로세스 선택
@@ -243,36 +163,15 @@ void schedule_fcfs(Scheduler* scheduler) {
 
             int is_moved_to_waiting = false;
 
-            // io작업 처리 (요청시점 동일한 경우를 위한 루프)
-            if (process->current_io_idx < process->io_count && 
-                    process->io_request_times[process->current_io_idx] == process->cpu_burst_time - process->remaining_time) {
-
-                process->is_doing_io = true;
-                process->io_remaining_time = process->io_burst_times[process->current_io_idx];
-                process->state = WAITING;
-                scheduler->waiting_queue[scheduler->waiting_queue_cnt++] = process;
-                process->current_io_idx++;  // 다음 io로 인덱스 변경
-                is_moved_to_waiting = true;
-            }
-
-            // ready-Q 제거
             if (is_moved_to_waiting) {
-                for (int j=0; j<scheduler->ready_queue_cnt-1; j++) {
-                    scheduler->ready_queue[j] = scheduler->ready_queue[j+1];
-                }
-                scheduler->ready_queue_cnt--;
+                // ready-Q 제거
+                remove_from_ready_queue(scheduler, 0);
             } else if (process ->remaining_time <= 0 &&process->is_doing_io == false) {
                 process->state = TERMINATED;
                 terminated_process_cnt++;
                 printf("P%d가 종료되었습니다.\n", process->pid);
-
-                // ready-Q 제거로직
-                for (int j=0; j<scheduler->ready_queue_cnt-1; j++) {
-                    scheduler->ready_queue[j] = scheduler->ready_queue[j+1];
-                }
-                scheduler->ready_queue_cnt--;
-            }
-                
+                remove_from_ready_queue(scheduler, 0);
+            }   
         }
         printf("현재 시간: %d\n", current_simulation_time);
         current_simulation_time++;
