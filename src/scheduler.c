@@ -92,9 +92,10 @@ Scheduler* Simulate(Scheduler* scheduler) {
         case SJF_NP:
             schedule_sjf_np(scheduler);
             break;
-        case SJF_P:
+        case SJF_P:    
             break;
         case PRIORITY_NP:
+            schedule_priority_np(scheduler);
             break;
         case PRIORITY_P:
             break;
@@ -172,6 +173,46 @@ void schedule_fcfs(Scheduler* scheduler) {
                 printf("P%d가 종료되었습니다.\n", process->pid);
                 remove_from_ready_queue(scheduler, 0);
             }   
+        }
+        printf("현재 시간: %d\n", current_simulation_time);
+        current_simulation_time++;
+    }
+}
+void schedule_priority_np(Scheduler* scheduler) {
+    int current_simulation_time = 0;
+    int terminated_process_cnt = 0;
+
+    while (terminated_process_cnt < scheduler->process_cnt) {
+        check_and_add_arrived_processes(scheduler, current_simulation_time);
+        process_io_operations(scheduler, &terminated_process_cnt);
+
+        if (scheduler->ready_queue_cnt > 0) {
+            Process* process = scheduler->ready_queue[0]; // 임시 설정
+
+            for (int i=0; i<scheduler->ready_queue_cnt; i++) {
+                // NOTE - priority 작을수록 중요도가 높음 (동점일 때는 도착시간 더 빠른쪽이 우선!)
+                if(scheduler->ready_queue[i]->priority <= process->priority) {
+                    bool is_more_important = (scheduler->ready_queue[i]->priority == process->priority && 
+     scheduler->ready_queue[i]->arrival_time < process->arrival_time); // 동점처리 boolean
+                    if (scheduler->ready_queue[i]->priority < process->priority || is_more_important) {
+                        process = scheduler->ready_queue[i];
+                    }
+                }
+            }
+            process->state = RUNNING;
+            process->remaining_time -= 1;
+
+            int is_moved_to_waiting = false;
+            handle_io_task_of_process(process, scheduler, &is_moved_to_waiting);
+
+            if (is_moved_to_waiting) {
+                remove_from_ready_queue(scheduler, 0);
+            } else if (process ->remaining_time <= 0 &&process->is_doing_io == false) {
+                process->state = TERMINATED;
+                terminated_process_cnt++;
+                printf("P%d가 종료되었습니다.\n", process->pid);
+                remove_from_ready_queue(scheduler, 0);
+            }
         }
         printf("현재 시간: %d\n", current_simulation_time);
         current_simulation_time++;
