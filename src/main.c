@@ -7,5 +7,7 @@ int main() {
         print_process(scheduler->process_arr[i]);
     }
 
+    Simulate(scheduler);
+
     return 0;
 }

@@ -1,6 +1,7 @@
 #include "scheduler.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 Scheduler* Config() {
     Scheduler* scheduler = (Scheduler*)malloc(sizeof(Scheduler));
@@ -72,7 +73,7 @@ Scheduler* Config() {
 
     for (int i=0; i<process_cnt; i++) {
         for (int j=0; j<scheduler->process_arr[i]->io_count; j++) {
-           scheduler->process_arr[i]->io_request_times[j] = rand() % scheduler->process_arr[i]->cpu_burst_time;
+           scheduler->process_arr[i]->io_request_times[j] = (rand() % (scheduler->process_arr[i]->cpu_burst_time - 1)) + 1;
         }
         sort_io_requests(scheduler->process_arr[i]);
     }
@@ -121,13 +122,16 @@ void schedule_fcfs(Scheduler* scheduler) {
             process->io_remaining_time--;
             
             // 완료되었을 때
-            if (process->io_remaining_time == 0) {
-                process->is_doing_io = FALSE;
+            if (process->io_remaining_time <= 0) {
+                process->is_doing_io = false;
                 
-                // io 작업 남아있으면
-                if (process->current_io_idx < process->io_count) {
+                if(process->remaining_time > 0) {
                     scheduler->ready_queue[scheduler->ready_queue_cnt++] = process;
                     process->state = READY;
+                } else if (process->current_io_idx >= process->io_count) {
+                    process->state = TERMINATED;
+                    terminated_process_cnt++;
+                    printf("P%d가 종료되었습니다.\n", process->pid);
                 }
                 
                 // waiting-Q 제거로직
@@ -142,39 +146,41 @@ void schedule_fcfs(Scheduler* scheduler) {
         if (scheduler->ready_queue_cnt > 0) {
             Process* process = scheduler->ready_queue[0]; // FCFS이므로 맨 앞에 있는 프로세스 선택
             
-            if (process->state == READY) {
-                process->state = RUNNING;
-                process->remaining_time -= 1; // 실행 처리
+            process->state = RUNNING;
+            process->remaining_time -= 1; // CPU 실행 처리
 
-                // io작업 처리 (요청시점 동일한 경우를 위한 루프)
-                while (process->current_io_idx < process->io_count && 
-                       process->io_request_times[process->current_io_idx] == process->cpu_burst_time - process->remaining_time) {
-                    process->is_doing_io = True;
-                    process->io_remaining_time = process->io_burst_times[process->current_io_idx];
-                    process->state = WAITING;
-                    scheduler->waiting_queue[scheduler->waiting_queue_cnt++] = process;
-                    process->current_io_idx++;  // 다음 io로 인덱스 변경
-                    
-                    // ready-Q 제거로직
-                    for (int j=0; j<scheduler->ready_queue_cnt-1; j++) {
-                        scheduler->ready_queue[j] = scheduler->ready_queue[j+1];
-                    }
-                    scheduler->ready_queue_cnt--;
-                }
+            int is_moved_to_waiting = false;
+
+            // io작업 처리 (요청시점 동일한 경우를 위한 루프)
+            if (process->current_io_idx < process->io_count && 
+                    process->io_request_times[process->current_io_idx] == process->cpu_burst_time - process->remaining_time) {
+
+                process->is_doing_io = true;
+                process->io_remaining_time = process->io_burst_times[process->current_io_idx];
+                process->state = WAITING;
+                scheduler->waiting_queue[scheduler->waiting_queue_cnt++] = process;
+                process->current_io_idx++;  // 다음 io로 인덱스 변경
+                is_moved_to_waiting = true;
             }
 
-            // 완료된 프로세스 처리
-            if(process->remaining_time == 0 && process->current_io_idx == process->io_count) {
+            // ready-Q 제거
+            if (is_moved_to_waiting) {
+                for (int j=0; j<scheduler->ready_queue_cnt-1; j++) {
+                    scheduler->ready_queue[j] = scheduler->ready_queue[j+1];
+                }
+                scheduler->ready_queue_cnt--;
+            } else if (process ->remaining_time <= 0 &&process->is_doing_io == false) {
                 process->state = TERMINATED;
                 terminated_process_cnt++;
                 printf("P%d가 종료되었습니다.\n", process->pid);
-                
-                // ready-Q에서 제거
+
+                // ready-Q 제거로직
                 for (int j=0; j<scheduler->ready_queue_cnt-1; j++) {
                     scheduler->ready_queue[j] = scheduler->ready_queue[j+1];
                 }
                 scheduler->ready_queue_cnt--;
             }
+                
         }
         printf("현재 시간: %d\n", current_simulation_time);
         current_simulation_time++;

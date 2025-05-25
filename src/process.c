@@ -14,6 +14,7 @@ Process* create_process(int arrival_time, int cpu_burst_time, int priority) {
     process->pid = random_number;
     process->arrival_time = arrival_time;
     process->cpu_burst_time = cpu_burst_time;
+    process->remaining_time = cpu_burst_time; // 초기값은 전체 cpu burst time일 것임
     process->priority = priority;
 
     process->state = NEW;
@@ -24,14 +25,14 @@ Process* create_process(int arrival_time, int cpu_burst_time, int priority) {
 
     process->io_count = rand() % (MAX_IO_COUNT - 1) + 2;
     for (int i=0; i<process->io_count; i++) {
-        // NOTE - 임시 초기화 후 이후 입력받을 때(config에서) 재정의 
-        process->io_request_times[i] = rand() % 5; 
+        // NOTE - io 요청시점은 config에서 정의 
+        // process->io_request_times[i] = rand() % 5; 
         process->io_burst_times[i] = rand() % 3 + 1; // 1~3시간 임의 설정
     }
 
     process->current_io_idx = 0;
     process->io_remaining_time = 0;
-    process->is_doing_io = FALSE;
+    process->is_doing_io = false;
 
     return process;
 }

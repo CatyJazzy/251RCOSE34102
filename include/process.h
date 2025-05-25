@@ -2,8 +2,6 @@
 #define PROCESS_H
 #include <stdbool.h>
 
-#define True 1
-#define FALSE 0
 #define MAX_IO_COUNT 3
 
 typedef enum {
