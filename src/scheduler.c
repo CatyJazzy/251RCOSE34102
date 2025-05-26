@@ -99,6 +99,7 @@ Scheduler* Simulate(Scheduler* scheduler) {
             schedule_priority_np(scheduler);
             break;
         case PRIORITY_P:
+            schedule_priority_p(scheduler);
             break;
         case ROUND_ROBIN:
             break;
@@ -235,7 +236,7 @@ void schedule_fcfs(Scheduler* scheduler) {
         current_simulation_time++;
     }
 }
-void schedule_priority_np(Scheduler* scheduler) {
+void schedule_priority_p(Scheduler* scheduler) {
     int current_simulation_time = 0;
     int terminated_process_cnt = 0;
 
@@ -271,6 +272,55 @@ void schedule_priority_np(Scheduler* scheduler) {
                 terminated_process_cnt++;
                 printf("P%d가 종료되었습니다.\n", process->pid);
                 remove_from_ready_queue(scheduler, process_idx);
+            }
+        }
+        printf("현재 시간: %d\n", current_simulation_time);
+        current_simulation_time++;
+    }
+}
+
+void schedule_priority_np(Scheduler* scheduler) {
+    int current_simulation_time = 0;
+    int terminated_process_cnt = 0;
+    Process* current_process = NULL;
+
+    while (terminated_process_cnt < scheduler->process_cnt) {
+        check_and_add_arrived_processes(scheduler, current_simulation_time);
+        process_io_operations(scheduler, &terminated_process_cnt);
+
+        if (current_process == NULL && scheduler->ready_queue_cnt > 0) {
+            Process* highest_priority_process = scheduler->ready_queue[0];
+            int highest_priority_process_idx = 0;
+
+            for (int i=0; i<scheduler->ready_queue_cnt; i++) {
+                // NOTE - priority 작을수록 중요도가 높음 (동점일 때는 도착시간 더 빠른쪽이 우선!)
+                if(scheduler->ready_queue[i]->priority <= highest_priority_process->priority) {
+                    bool is_more_important = (scheduler->ready_queue[i]->priority == highest_priority_process->priority && 
+     scheduler->ready_queue[i]->arrival_time < highest_priority_process->arrival_time); // 동점처리 boolean
+                    if (scheduler->ready_queue[i]->priority < highest_priority_process->priority || is_more_important) {
+                        highest_priority_process = scheduler->ready_queue[i];
+                        highest_priority_process_idx = i;  
+                    }
+                }
+            }
+            current_process = highest_priority_process;
+            current_process->state = RUNNING;
+            remove_from_ready_queue(scheduler, highest_priority_process_idx);
+        }
+
+        if (current_process != NULL) {
+            current_process->remaining_time -= 1; 
+
+            int is_moved_to_waiting = false;
+            handle_io_task_of_process(current_process, scheduler, &is_moved_to_waiting);
+
+            if (is_moved_to_waiting) {
+                current_process = NULL;
+            } else if (current_process ->remaining_time <= 0) {
+                current_process->state = TERMINATED;
+                terminated_process_cnt++;
+                printf("P%d가 종료되었습니다.\n", current_process->pid);
+                current_process = NULL;
             }
         }
         printf("현재 시간: %d\n", current_simulation_time);

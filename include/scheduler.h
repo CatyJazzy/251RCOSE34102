@@ -36,5 +36,5 @@ void schedule_fcfs(Scheduler* scheduler);
 void schedule_sjf_np(Scheduler* scheduler);
 void schedule_sjf_p(Scheduler* scheduler);
 void schedule_priority_np(Scheduler* scheduler);
-
+void schedule_priority_p(Scheduler* scheduler);
 #endif
