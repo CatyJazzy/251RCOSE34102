@@ -50,42 +50,43 @@
 
 ```
 .
-├── Makefile
-├── main.c
-├── process.h
-├── process.c
-├── scheduler.h
-├── scheduler.c
-├── utils.h
-└── utils.c
+├── include/
+│   ├── process.h     # 프로세스 관련 구조체 및 함수 선언
+│   ├── scheduler.h   # 스케줄러 관련 구조체 및 함수 선언
+│   └── utils.h       # 유틸리티 함수 선언
+├── src/
+│   ├── process.c     # 프로세스 관련 함수 구현
+│   ├── scheduler.c   # 스케줄러 관련 함수 구현
+│   └── utils.c       # 유틸리티 함수 구현
+├── Makefile          # 빌드 설정
+└── README.md         # 프로젝트 설명
 ```
 
 ## 📋 구현 태스크 목록
 
 ### 1. 프로젝트 기본 구조 설정 
 - [x] 프로젝트 디렉토리 구조 설계
-- [ ] Makefile 생성
+- [x] Makefile 생성
 - [x] 기본 헤더 파일 구조 설계
 
 ### 2. 프로세스 관리 모듈 
-- [ ] Process 구조체 정의
-- [ ] 프로세스 상태 열거형 정의
-- [ ] 프로세스 생성/삭제/출력 함수 구현
+- [x] Process 구조체 정의
+- [x] 프로세스 상태 열거형 정의
+- [x] 프로세스 생성/삭제/출력 함수 구현
 
 ### 3. 스케줄러 모듈 구현 (진행 중)
 - [x] 스케줄러 기본 구조 설계
-- [ ] 스케줄링 알고리즘 구현
+- [x] 스케줄링 알고리즘 구현
 - [ ] 간트 차트 생성 및 출력
 
 ### 4. 유틸리티 모듈 구현
-- [ ] 랜덤 프로세스 생성
-- [ ] I/O 작업 처리
-- [ ] 성능 평가 함수
+- [x] I/O 작업 처리
+- [x] 큐 조작 함수
 
 ### 5. 메인 프로그램 구현
-- [ ] 사용자 인터페이스
-- [ ] 시뮬레이션 실행
-- [ ] 결과 출력
+- [x] 사용자 인터페이스
+- [x] 시뮬레이션 실행
+- [x] 결과 출력
 
 ## 🚀 빌드 및 실행 방법
 
@@ -94,7 +95,7 @@
 make
 
 # 실행
-./cpu_scheduler
+./scheduler
 
 # 정리
 make clean
@@ -102,14 +103,40 @@ make clean
 
 ## 📊 성능 평가 방법
 
-1. 각 스케줄링 알고리즘별 성능 측정
-   - 평균 대기 시간
-   - 평균 반환 시간
-   - CPU 사용률
-   - 처리량
+각 스케줄링 알고리즘별 성능 측정
+- 평균 대기 시간
+- 평균 반환 시간
 
-2. 다양한 상황에서의 테스트
-   - I/O 작업이 많은 경우
-   - CPU 집약적인 작업
-   - 혼합된 워크로드
+## 구현된 스케줄링 알고리즘
+1. FCFS (First Come First Served)
+2. SJF-NP (Shortest Job First - Non Preemptive)
+3. SJF-P (Shortest Job First - Preemptive)
+4. Priority-NP (Priority - Non Preemptive)
+5. Priority-P (Priority - Preemptive)
+6. Round Robin (구현 예정)
+
+## 성능 측정 지표
+각 스케줄링 알고리즘의 성능을 다음 지표들을 통해 측정합니다:
+- Response Time: 프로세스가 처음 실행되기까지 걸린 시간
+- Waiting Time: 프로세스가 대기 큐에서 기다린 총 시간
+- Turnaround Time: 프로세스가 완료되기까지 걸린 총 시간 (대기 시간 + 실행 시간)
+- Completion Time: 프로세스가 완료된 시점
+
+## 입력 형식
+1. 시뮬레이션할 프로세스 개수
+2. 사용할 스케줄링 알고리즘 선택
+3. 타임 퀀텀 (Round Robin 알고리즘 선택 시)
+4. 각 프로세스별 정보:
+   - 도착 시간
+   - CPU 실행 시간
+   - 우선순위
+
+## 출력 형식
+- 각 프로세스의 실행 상태 변화
+- 현재 시뮬레이션 시간
+- 프로세스 종료 메시지
+- 성능 측정 결과:
+  - 평균 Waiting Time
+  - 평균 Turnaround Time
+
 
