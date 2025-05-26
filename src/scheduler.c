@@ -109,6 +109,19 @@ Scheduler* Simulate(Scheduler* scheduler) {
     return scheduler;
 }
 
+void Evaluation(Scheduler* scheduler) {
+    printf("\n\n|---- 성능 측정 결과 ----|\n");
+    int total_waiting_time = 0;
+    int total_turnaround_time = 0;
+
+    for (int i=0; i<scheduler->process_cnt; i++) {
+        total_waiting_time += scheduler->process_arr[i]->waiting_time;
+        total_turnaround_time += scheduler->process_arr[i]->turnaround_time;
+    }
+    printf("평균 Waiting Time: %.2f\n", (float)total_waiting_time / scheduler->process_cnt);
+    printf("평균 Turnaround Time: %.2f\n", (float)total_turnaround_time / scheduler->process_cnt);
+}
+
 void schedule_sjf_np(Scheduler* scheduler) {
     int current_simulation_time = 0;
     int terminated_process_cnt = 0;
@@ -138,6 +151,12 @@ void schedule_sjf_np(Scheduler* scheduler) {
             current_process = shortest_process;
             current_process->state = RUNNING;
             remove_from_ready_queue(scheduler, shortest_process_idx);
+            
+            //SECTION - 성능측정
+            if (current_process->is_first_execution) {
+                current_process->response_time = current_simulation_time;
+                current_process->is_first_execution = false;
+            }
         }
 
         if (current_process != NULL) {
@@ -151,6 +170,12 @@ void schedule_sjf_np(Scheduler* scheduler) {
             } else if (current_process ->remaining_time <= 0) {
                 current_process->state = TERMINATED;
                 terminated_process_cnt++;
+                
+                //SECTION - 성능측정
+                current_process->completion_time = current_simulation_time;
+                current_process->turnaround_time = current_process->completion_time - current_process->arrival_time;
+                current_process->waiting_time = current_process->turnaround_time - current_process->cpu_burst_time;
+                
                 printf("P%d가 종료되었습니다.\n", current_process->pid);
                 current_process = NULL;
             }
@@ -185,7 +210,12 @@ void schedule_sjf_p(Scheduler* scheduler) {
             }
 
             current_process->state = RUNNING;
-            current_process->remaining_time -= 1;   
+            current_process->remaining_time -= 1;  
+            //SECTION - 성능측정
+            if (current_process->is_first_execution) {
+                current_process->response_time = current_simulation_time;
+                current_process->is_first_execution = false;
+            }
 
              int is_moved_to_waiting = false;
             handle_io_task_of_process(current_process, scheduler, &is_moved_to_waiting);
@@ -196,6 +226,12 @@ void schedule_sjf_p(Scheduler* scheduler) {
             } else if (current_process ->remaining_time <= 0 &&current_process->is_doing_io == false) {
                 current_process->state = TERMINATED;
                 terminated_process_cnt++;
+
+                //SECTION - 성능측정
+                current_process->completion_time = current_simulation_time;
+                current_process->turnaround_time = current_process->completion_time - current_process->arrival_time;
+                current_process->waiting_time = current_process->turnaround_time - current_process->cpu_burst_time;
+                
                 printf("P%d가 종료되었습니다.\n", current_process->pid);
                 remove_from_ready_queue(scheduler, current_process_idx);
             }
@@ -217,6 +253,13 @@ void schedule_fcfs(Scheduler* scheduler) {
             Process* process = scheduler->ready_queue[0]; // FCFS이므로 맨 앞에 있는 프로세스 선택
             
             process->state = RUNNING;
+            
+            //SECTION - 성능측정
+            if (process->is_first_execution) {
+                process->response_time = current_simulation_time;
+                process->is_first_execution = false;
+            }
+            
             process->remaining_time -= 1; // CPU 실행 처리
 
             int is_moved_to_waiting = false;
@@ -228,6 +271,12 @@ void schedule_fcfs(Scheduler* scheduler) {
             } else if (process ->remaining_time <= 0 &&process->is_doing_io == false) {
                 process->state = TERMINATED;
                 terminated_process_cnt++;
+                
+                //SECTION - 성능측정
+                process->completion_time = current_simulation_time;
+                process->turnaround_time = process->completion_time - process->arrival_time;
+                process->waiting_time = process->turnaround_time - process->cpu_burst_time;
+                
                 printf("P%d가 종료되었습니다.\n", process->pid);
                 remove_from_ready_queue(scheduler, 0);
             }   
@@ -260,6 +309,13 @@ void schedule_priority_p(Scheduler* scheduler) {
                 }
             }
             process->state = RUNNING;
+            
+            //SECTION - 성능측정
+            if (process->is_first_execution) {
+                process->response_time = current_simulation_time;
+                process->is_first_execution = false;
+            }
+            
             process->remaining_time -= 1;
 
             int is_moved_to_waiting = false;
@@ -270,6 +326,12 @@ void schedule_priority_p(Scheduler* scheduler) {
             } else if (process ->remaining_time <= 0 &&process->is_doing_io == false) {
                 process->state = TERMINATED;
                 terminated_process_cnt++;
+                
+                //SECTION - 성능측정
+                process->completion_time = current_simulation_time;
+                process->turnaround_time = process->completion_time - process->arrival_time;
+                process->waiting_time = process->turnaround_time - process->cpu_burst_time;
+                
                 printf("P%d가 종료되었습니다.\n", process->pid);
                 remove_from_ready_queue(scheduler, process_idx);
             }
@@ -278,7 +340,6 @@ void schedule_priority_p(Scheduler* scheduler) {
         current_simulation_time++;
     }
 }
-
 void schedule_priority_np(Scheduler* scheduler) {
     int current_simulation_time = 0;
     int terminated_process_cnt = 0;
@@ -305,6 +366,13 @@ void schedule_priority_np(Scheduler* scheduler) {
             }
             current_process = highest_priority_process;
             current_process->state = RUNNING;
+            
+            //SECTION - 성능측정
+            if (current_process->is_first_execution) {
+                current_process->response_time = current_simulation_time;
+                current_process->is_first_execution = false;
+            }
+            
             remove_from_ready_queue(scheduler, highest_priority_process_idx);
         }
 
@@ -319,6 +387,12 @@ void schedule_priority_np(Scheduler* scheduler) {
             } else if (current_process ->remaining_time <= 0) {
                 current_process->state = TERMINATED;
                 terminated_process_cnt++;
+                
+                //SECTION - 성능측정
+                current_process->completion_time = current_simulation_time;
+                current_process->turnaround_time = current_process->completion_time - current_process->arrival_time;
+                current_process->waiting_time = current_process->turnaround_time - current_process->cpu_burst_time;
+                
                 printf("P%d가 종료되었습니다.\n", current_process->pid);
                 current_process = NULL;
             }

@@ -32,6 +32,9 @@ typedef struct {
 
 Scheduler* Config(void);
 Scheduler* Simulate(Scheduler* scheduler);
+
+void Evaluation(Scheduler* scheduler);
+
 void schedule_fcfs(Scheduler* scheduler); 
 void schedule_sjf_np(Scheduler* scheduler);
 void schedule_sjf_p(Scheduler* scheduler);

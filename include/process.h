@@ -24,7 +24,9 @@ typedef struct {
     /* 성능 지표용 변수 */
     int waiting_time; 
     int turnaround_time;
-    int response_time;
+    int response_time; // 최초 실행 타이밍
+    int completion_time;  
+    bool is_first_execution;  // 최초 실행 여부 확인용
 
     /* IO 작업 처리 */
     int io_count; // 전체 io 작업횟수 (최대3번)

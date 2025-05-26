@@ -22,6 +22,8 @@ Process* create_process(int arrival_time, int cpu_burst_time, int priority) {
     process->waiting_time = 0;
     process->turnaround_time = 0;
     process->response_time = 0;
+    process->completion_time = 0;
+    process->is_first_execution = true;
 
     process->io_count = rand() % (MAX_IO_COUNT - 1) + 2;
     for (int i=0; i<process->io_count; i++) {

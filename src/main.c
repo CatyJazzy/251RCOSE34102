@@ -8,6 +8,7 @@ int main() {
     }
 
     Simulate(scheduler);
+    Evaluation(scheduler);
 
     return 0;
 }
