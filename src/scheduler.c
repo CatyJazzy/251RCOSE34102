@@ -253,6 +253,11 @@ void schedule_sjf_p(Scheduler* scheduler) {
             int current_process_idx = 0;
 
             for (int i=0; i<scheduler->ready_queue_cnt; i++) {
+
+                if (scheduler->ready_queue[i]->state == TERMINATED) {
+                    continue;
+                }
+
                 if (scheduler->ready_queue[i]->remaining_time < current_process->remaining_time) {
                     current_process = scheduler->ready_queue[i]; // Shorted Job 프로세스 선택
                     current_process_idx = i;
@@ -280,7 +285,7 @@ void schedule_sjf_p(Scheduler* scheduler) {
             current_process->state = RUNNING;
             current_process->remaining_time -= 1; 
 
-            printf("P%d가 실행되었습니다.\n", current_process->pid);
+            printf("P%d가 실행되었습니다. (현재시간: %d)\n", current_process->pid, current_simulation_time);
 
             //SECTION - 성능측정
             if (current_process->is_first_execution) {
@@ -308,7 +313,7 @@ void schedule_sjf_p(Scheduler* scheduler) {
                 current_process->turnaround_time = current_process->completion_time - current_process->arrival_time;
                 current_process->waiting_time = current_process->turnaround_time - current_process->cpu_burst_time;
                 
-                printf("P%d가 종료되었습니다.\n", current_process->pid);
+                printf("P%d가 종료되었습니다. (현재시간: %d)\n", current_process->pid, current_simulation_time);
                 remove_from_ready_queue(scheduler, current_process_idx);
             }
         } else {
