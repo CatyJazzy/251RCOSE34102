@@ -234,6 +234,7 @@ void schedule_sjf_p(Scheduler* scheduler) {
     GanttChart idle_item;
 
     Process* prev_process = NULL;
+    Process* running_process = NULL;
     GanttChart chart_item;
 
     while(terminated_process_cnt < scheduler->process_cnt) {
@@ -248,31 +249,86 @@ void schedule_sjf_p(Scheduler* scheduler) {
         check_and_add_arrived_processes(scheduler, current_simulation_time);
         process_io_operations(scheduler, &terminated_process_cnt);
         
-        if (scheduler->ready_queue_cnt > 0) {
-            Process* current_process = scheduler->ready_queue[0]; // 임시 설정
-            int current_process_idx = 0;
+        Process* current_process = NULL;
+        int current_process_idx = 0;
 
-            for (int i=0; i<scheduler->ready_queue_cnt; i++) {
+        // 실행중 & 레디큐 프로세스 모두 있을 때
+        if (running_process == NULL && scheduler->ready_queue_cnt > 0) {
+            Process* shortest_process = scheduler->ready_queue[0]; // 임시 설정
+            int shortest_process_idx = 0;
 
+            for (int i=1; i<scheduler->ready_queue_cnt; i++) {
                 if (scheduler->ready_queue[i]->state == TERMINATED) {
                     continue;
                 }
 
-                if (scheduler->ready_queue[i]->remaining_time < current_process->remaining_time) {
-                    current_process = scheduler->ready_queue[i]; // Shorted Job 프로세스 선택
-                    current_process_idx = i;
-                } else if (scheduler->ready_queue[i]->remaining_time == current_process->remaining_time) {
-                    if (scheduler->ready_queue[i]->arrival_time < current_process->arrival_time) {
-                        current_process = scheduler->ready_queue[i];
-                        current_process_idx = i;
+                if (shortest_process == NULL || 
+                    scheduler->ready_queue[i]->remaining_time < shortest_process->remaining_time) {
+                    shortest_process = scheduler->ready_queue[i]; // Shorted Job 프로세스 선택
+                    shortest_process_idx = i;
+                } else if (scheduler->ready_queue[i]->remaining_time == shortest_process->remaining_time) {
+                    if (scheduler->ready_queue[i]->arrival_time < shortest_process->arrival_time) {
+                        shortest_process = scheduler->ready_queue[i];
+                        shortest_process_idx = i;
                     }
                 }
             }
 
+            // 선점 확인
+            if (running_process == NULL || 
+                shortest_process->remaining_time < running_process->remaining_time || 
+                (shortest_process->remaining_time == running_process->remaining_time &&
+                shortest_process->arrival_time < running_process->arrival_time)) {
+                if (running_process != NULL) {
+                    running_process->state = READY;
+                    scheduler->ready_queue[scheduler->ready_queue_cnt++] = running_process;
+                }
+                
+                current_process = shortest_process;
+                current_process_idx = shortest_process_idx;
+                running_process = current_process;
+            } else {
+                current_process = running_process;
+                current_process_idx = -1;
+            }
+        }
+        // 실행중 프로세스 O, 레디큐X일 때
+        else if (running_process != NULL && scheduler->ready_queue_cnt == 0) {
+            current_process = running_process;
+            current_process_idx = -1;
+        }
+        
+        // 실행중 프로세스 X, 레디큐O일 때
+        else if (scheduler->ready_queue_cnt > 0) {
+            Process* shortest_process = scheduler->ready_queue[0];
+            int shortest_process_idx = 0;
+
+            for (int i=1; i<scheduler->ready_queue_cnt; i++) {
+                if (scheduler->ready_queue[i]->state == TERMINATED) {
+                    continue;
+                }
+
+                if (scheduler->ready_queue[i]->remaining_time < shortest_process->remaining_time) {
+                    shortest_process = scheduler->ready_queue[i];
+                    shortest_process_idx = i;
+                } else if (scheduler->ready_queue[i]->remaining_time == shortest_process->remaining_time) {
+                    if (scheduler->ready_queue[i]->arrival_time < shortest_process->arrival_time) {
+                        shortest_process = scheduler->ready_queue[i];
+                        shortest_process_idx = i;
+                    }
+                }
+            }
+
+            current_process = shortest_process;
+            current_process_idx = shortest_process_idx;
+            running_process = current_process;
+        }
+        
+        if (current_process != NULL) {
             if (prev_process != current_process) {
                 if(prev_process != NULL) {
                     // 이전 프로세스 실행내역 기록
-                    chart_item.end_time = current_simulation_time;
+                    chart_item.end_time = current_simulation_time;  
                     scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
                 }
 
@@ -293,46 +349,51 @@ void schedule_sjf_p(Scheduler* scheduler) {
                 current_process->is_first_execution = false;
             }
 
-             int is_moved_to_waiting = false;
+            int is_moved_to_waiting = false;
             handle_io_task_of_process(current_process, scheduler, &is_moved_to_waiting);
 
             if (is_moved_to_waiting) {
                 // ready-Q 제거
-                chart_item.end_time = current_simulation_time + 1;
+                chart_item.end_time = current_simulation_time + 1;  
                 scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
                 remove_from_ready_queue(scheduler, current_process_idx);
                 prev_process = NULL;
+                running_process = NULL;  // IO 작업으로 이동 시 running_process 초기화
             } else if (current_process ->remaining_time <= 0 &&current_process->is_doing_io == false) {
                 current_process->state = TERMINATED;
                 terminated_process_cnt++;
 
-                chart_item.end_time = current_simulation_time + 1;
+                chart_item.end_time = current_simulation_time + 1;  
                 scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
                 prev_process = NULL;
-
+                running_process = NULL;  // 프로세스 종료 시 running_process 초기화
+                
                 //SECTION - 성능측정
                 current_process->completion_time = current_simulation_time + 1;
                 current_process->turnaround_time = current_process->completion_time - current_process->arrival_time;
                 current_process->waiting_time = current_process->turnaround_time - current_process->cpu_burst_time;
                 
                 printf("P%d가 종료되었습니다. (현재시간: %d)\n", current_process->pid, current_simulation_time);
-                remove_from_ready_queue(scheduler, current_process_idx);
+                if (current_process_idx >= 0) {
+                    remove_from_ready_queue(scheduler, current_process_idx);
+                }
             }
         } else {
             // ready-Q 비어있을 때 초기화
             if (prev_process != NULL) {
-                chart_item.end_time = current_simulation_time;
+                chart_item.end_time = current_simulation_time;  
                 scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
                 prev_process = NULL;
             }
         }
+
         printf("현재 시간: %d\n", current_simulation_time);
         current_simulation_time++;
     }
 
     // 마지막 남은 구간 처리
     if (prev_process != NULL) {
-        chart_item.end_time = current_simulation_time;
+        chart_item.end_time = current_simulation_time + 1;
         scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
@@ -423,6 +484,7 @@ void schedule_priority_p(Scheduler* scheduler) {
     int is_idle = 0;
 
     Process* prev_process = NULL;
+    Process* running_process = NULL;
     GanttChart chart_item;
 
     while (terminated_process_cnt < scheduler->process_cnt) {
@@ -434,79 +496,130 @@ void schedule_priority_p(Scheduler* scheduler) {
         check_and_add_arrived_processes(scheduler, current_simulation_time);
         process_io_operations(scheduler, &terminated_process_cnt);
 
-        if (scheduler->ready_queue_cnt > 0) {
-            Process* process = scheduler->ready_queue[0]; // 임시 설정
-            int process_idx = 0;  
+        Process* current_process = NULL;
+        int current_process_idx = 0;
 
-            for (int i=0; i<scheduler->ready_queue_cnt; i++) {
+        // 실행중 프로세스 & 레디큐 프로세스 모두 존재
+        if (running_process != NULL && scheduler->ready_queue_cnt > 0) {
+            Process* highest_process = scheduler->ready_queue[0]; // 임시 설정
+            int highest_process_idx = 0;  
 
+            for (int i=1; i<scheduler->ready_queue_cnt; i++) {
                 if (scheduler->ready_queue[i]->state == TERMINATED) continue;
 
                 // NOTE - priority 작을수록 중요도가 높음 (동점일 때는 도착시간 더 빠른쪽이 우선!)
-                if(scheduler->ready_queue[i]->priority <= process->priority) {
-                    bool is_more_important = (scheduler->ready_queue[i]->priority == process->priority && 
-     scheduler->ready_queue[i]->arrival_time < process->arrival_time); // 동점처리 boolean
-                    if (scheduler->ready_queue[i]->priority < process->priority || is_more_important) {
-                        process = scheduler->ready_queue[i];
-                        process_idx = i;  
+                if (scheduler->ready_queue[i]->priority <= highest_process->priority) {
+                    bool is_more_important = (scheduler->ready_queue[i]->priority == highest_process->priority && 
+                    scheduler->ready_queue[i]->arrival_time < highest_process->arrival_time); // 동점처리 boolean
+                    if (scheduler->ready_queue[i]->priority < highest_process->priority || is_more_important) {
+                        highest_process = scheduler->ready_queue[i];
+                        highest_process_idx = i;
+                    }
+                }       
+            }
+
+            // 선점 여부 체크
+            if (highest_process->priority < running_process->priority ||
+                (highest_process->priority == running_process->priority &&
+                highest_process->arrival_time < running_process->arrival_time)) {
+                running_process->state = READY;
+                scheduler->ready_queue[scheduler->ready_queue_cnt++] = running_process;
+
+                current_process = highest_process;
+                current_process_idx = highest_process_idx;
+                running_process = current_process;
+            } else {
+                current_process = running_process;
+                current_process_idx = -1;
+            }
+        }
+        // 실행중 프로세스 O, 레디큐X일 때
+        else if (running_process != NULL && scheduler->ready_queue_cnt == 0) {
+            current_process = running_process;
+            current_process_idx = -1;
+        } 
+        // 실행중 프로세스 X, 레디큐O일 때
+        else if (scheduler->ready_queue_cnt > 0) {
+            Process* highest_process = scheduler->ready_queue[0];
+            int highest_process_idx = 0;
+
+            for (int i=1; i<scheduler->ready_queue_cnt; i++) {
+                if (scheduler->ready_queue[i]->state == TERMINATED) continue;
+
+                if (scheduler->ready_queue[i]->priority <= highest_process->priority) {
+                    bool is_more_important = (scheduler->ready_queue[i]->priority == highest_process->priority && 
+                    scheduler->ready_queue[i]->arrival_time < highest_process->arrival_time);
+                    if (scheduler->ready_queue[i]->priority < highest_process->priority || is_more_important) {
+                        highest_process = scheduler->ready_queue[i];
+                        highest_process_idx = i;
                     }
                 }
             }
 
-             if (prev_process != process) {
+            current_process = highest_process;
+            current_process_idx = highest_process_idx;
+            running_process = current_process;
+        }
+
+        if (current_process != NULL) {
+            if (prev_process != current_process) {
                 if(prev_process != NULL) {
                     // 이전 프로세스 실행내역 기록
-                    chart_item.end_time = current_simulation_time;
+                    chart_item.end_time = current_simulation_time; 
                     scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
                 }
 
                 // 업데이트
                 chart_item.start_time = current_simulation_time;
-                sprintf(chart_item.process_name, "P%d", process->pid);
-                prev_process = process;
+                sprintf(chart_item.process_name, "P%d", current_process->pid);
+                prev_process = current_process;
             }
 
-            process->state = RUNNING;
-            process->remaining_time -= 1;
+            current_process->state = RUNNING;
+            current_process->remaining_time -= 1;
 
-            printf("P%d가 실행되었습니다. (현재시간: %d)\n", process->pid, current_simulation_time);
+            printf("P%d가 실행되었습니다. (현재시간: %d)\n", current_process->pid, current_simulation_time);
 
             //SECTION - 성능측정
-            if (process->is_first_execution) {
-                process->response_time = current_simulation_time;
-                process->is_first_execution = false;
+            if (current_process->is_first_execution) {
+                current_process->response_time = current_simulation_time;
+                current_process->is_first_execution = false;
             }
         
 
             int is_moved_to_waiting = false;
-            handle_io_task_of_process(process, scheduler, &is_moved_to_waiting);
+            handle_io_task_of_process(current_process, scheduler, &is_moved_to_waiting);
 
             if (is_moved_to_waiting) {
-                chart_item.end_time = current_simulation_time + 1;
+                chart_item.end_time = current_simulation_time + 1;  
                 scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
-                remove_from_ready_queue(scheduler, process_idx);  
+                remove_from_ready_queue(scheduler, current_process_idx);  
                 prev_process = NULL;
-            } else if (process ->remaining_time <= 0 &&process->is_doing_io == false) {
-                process->state = TERMINATED;
+                running_process = NULL;  
+            } else if (current_process->remaining_time <= 0 && current_process->is_doing_io == false) {
+                current_process->state = TERMINATED;
                 terminated_process_cnt++;
 
                 // GanttChart 생성용
-                chart_item.end_time = current_simulation_time + 1;
+                chart_item.end_time = current_simulation_time + 1;  
                 scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
                 prev_process = NULL;
+                running_process = NULL; 
                 
                 //SECTION - 성능측정
-                process->completion_time = current_simulation_time + 1;
-                process->turnaround_time = process->completion_time - process->arrival_time;
-                process->waiting_time = process->turnaround_time - process->cpu_burst_time;
+                current_process->completion_time = current_simulation_time + 1;
+                current_process->turnaround_time = current_process->completion_time - current_process->arrival_time;
+                current_process->waiting_time = current_process->turnaround_time - current_process->cpu_burst_time;
                 
-                printf("P%d가 종료되었습니다.(현재시간: %d)\n", process->pid, current_simulation_time);
-                remove_from_ready_queue(scheduler, process_idx);
+                printf("P%d가 종료되었습니다.(현재시간: %d)\n", current_process->pid, current_simulation_time);
+                if (current_process_idx >= 0) {
+                    remove_from_ready_queue(scheduler, current_process_idx);
+                }
             }
         } else {
             // ready-Q 비어있을 때 초기화
             if (prev_process != NULL) {
-                chart_item.end_time = current_simulation_time;
+                chart_item.end_time = current_simulation_time; 
                 scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
                 prev_process = NULL;
             }
@@ -516,7 +629,7 @@ void schedule_priority_p(Scheduler* scheduler) {
     }
     // 마지막 남은 구간 처리
     if (prev_process != NULL) {
-        chart_item.end_time = current_simulation_time;
+        chart_item.end_time = current_simulation_time + 1;
         scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
