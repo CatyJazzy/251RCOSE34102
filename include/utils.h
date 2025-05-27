@@ -1,5 +1,6 @@
 #ifndef UTILS_H
 #define UTILS_H
+
 #include "scheduler.h"
 
 // 도착한 프로세스를 확인하여 ready queue에 추가

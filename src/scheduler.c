@@ -56,6 +56,7 @@ Scheduler* Config() {
 
     scheduler->ready_queue_cnt = 0;
     scheduler->waiting_queue_cnt = 0;
+    scheduler->gantt_chart_cnt = 0;
 
     printf("|---- 시뮬레이션할 프로세스 정보 입력 ----|\n");
     // 프로세스 생성
@@ -85,6 +86,7 @@ Scheduler* Config() {
 }
 
 Scheduler* Simulate(Scheduler* scheduler) {
+
     switch (scheduler->scheduling_algorithm) {
         case FCFS:
             schedule_fcfs(scheduler);
@@ -127,10 +129,31 @@ void schedule_sjf_np(Scheduler* scheduler) {
     int terminated_process_cnt = 0;
     Process* current_process = NULL;
 
+    GanttChart idle_item;
+    int is_idle = 0;
+
     while(terminated_process_cnt < scheduler->process_cnt) {
+
+        if (scheduler->ready_queue_cnt == 0) {
+            if (!is_idle) {
+                idle_item.start_time = current_simulation_time;
+                sprintf(idle_item.process_name, "IDLE");
+                is_idle = 1;
+            }
+        } else {
+            if (is_idle) {
+                idle_item.end_time = current_simulation_time;
+                scheduler-> gantt_chart[scheduler->gantt_chart_cnt++] = idle_item;
+                is_idle = 0;
+            }
+        }
+
         // 도착한 프로세스 확인함
         check_and_add_arrived_processes(scheduler, current_simulation_time);
         process_io_operations(scheduler, &terminated_process_cnt);
+
+        // GanttChart 생성용
+        GanttChart chart_item;
 
         if (current_process == NULL && scheduler->ready_queue_cnt > 0) {
            Process* shortest_process = scheduler->ready_queue[0]; // 임시 설정
@@ -148,6 +171,10 @@ void schedule_sjf_np(Scheduler* scheduler) {
                     }
                 }
             }
+
+            chart_item.start_time = current_simulation_time;
+            sprintf(chart_item.process_name, "P%d", shortest_process->pid);
+
             current_process = shortest_process;
             current_process->state = RUNNING;
             remove_from_ready_queue(scheduler, shortest_process_idx);
@@ -170,6 +197,10 @@ void schedule_sjf_np(Scheduler* scheduler) {
             } else if (current_process ->remaining_time <= 0) {
                 current_process->state = TERMINATED;
                 terminated_process_cnt++;
+
+                // GanttChart 생성용
+                chart_item.end_time = current_simulation_time;
+                scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
                 
                 //SECTION - 성능측정
                 current_process->completion_time = current_simulation_time;
@@ -183,6 +214,11 @@ void schedule_sjf_np(Scheduler* scheduler) {
         printf("현재 시간: %d\n", current_simulation_time);
         current_simulation_time++;   
     }
+
+    if (is_idle) {
+        idle_item.end_time = current_simulation_time;
+        scheduler -> gantt_chart[scheduler->gantt_chart_cnt++] = idle_item;
+    }
 }
 void schedule_sjf_p(Scheduler* scheduler) {
     int current_simulation_time = 0;
@@ -192,6 +228,9 @@ void schedule_sjf_p(Scheduler* scheduler) {
         // 도착한 프로세스 확인함
         check_and_add_arrived_processes(scheduler, current_simulation_time);
         process_io_operations(scheduler, &terminated_process_cnt);
+
+        // GanttChart 생성용
+        GanttChart chart_item;
         
         if (scheduler->ready_queue_cnt > 0) {
             Process* current_process = scheduler->ready_queue[0]; // 임시 설정
@@ -210,7 +249,11 @@ void schedule_sjf_p(Scheduler* scheduler) {
             }
 
             current_process->state = RUNNING;
-            current_process->remaining_time -= 1;  
+            current_process->remaining_time -= 1; 
+
+            chart_item.start_time = current_simulation_time;
+            sprintf(chart_item.process_name, "P%d", current_process->pid);
+
             //SECTION - 성능측정
             if (current_process->is_first_execution) {
                 current_process->response_time = current_simulation_time;
@@ -226,6 +269,10 @@ void schedule_sjf_p(Scheduler* scheduler) {
             } else if (current_process ->remaining_time <= 0 &&current_process->is_doing_io == false) {
                 current_process->state = TERMINATED;
                 terminated_process_cnt++;
+
+                        // GanttChart 생성용
+                chart_item.end_time = current_simulation_time;
+                scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
 
                 //SECTION - 성능측정
                 current_process->completion_time = current_simulation_time;
@@ -249,10 +296,16 @@ void schedule_fcfs(Scheduler* scheduler) {
         check_and_add_arrived_processes(scheduler, current_simulation_time);
         process_io_operations(scheduler, &terminated_process_cnt);
 
+        // GanttChart 생성용
+        GanttChart chart_item;
+
         if (scheduler->ready_queue_cnt > 0) {
             Process* process = scheduler->ready_queue[0]; // FCFS이므로 맨 앞에 있는 프로세스 선택
             
             process->state = RUNNING;
+
+            chart_item.start_time = current_simulation_time;
+            sprintf(chart_item.process_name, "P%d", process->pid);
             
             //SECTION - 성능측정
             if (process->is_first_execution) {
@@ -271,6 +324,10 @@ void schedule_fcfs(Scheduler* scheduler) {
             } else if (process ->remaining_time <= 0 &&process->is_doing_io == false) {
                 process->state = TERMINATED;
                 terminated_process_cnt++;
+
+                // GanttChart 생성용
+                chart_item.end_time = current_simulation_time;
+                scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
                 
                 //SECTION - 성능측정
                 process->completion_time = current_simulation_time;
@@ -293,6 +350,9 @@ void schedule_priority_p(Scheduler* scheduler) {
         check_and_add_arrived_processes(scheduler, current_simulation_time);
         process_io_operations(scheduler, &terminated_process_cnt);
 
+        // GanttChart 생성용
+        GanttChart chart_item;
+
         if (scheduler->ready_queue_cnt > 0) {
             Process* process = scheduler->ready_queue[0]; // 임시 설정
             int process_idx = 0;  
@@ -309,6 +369,9 @@ void schedule_priority_p(Scheduler* scheduler) {
                 }
             }
             process->state = RUNNING;
+
+            chart_item.start_time = current_simulation_time;
+            sprintf(chart_item.process_name, "P%d", process->pid);
             
             //SECTION - 성능측정
             if (process->is_first_execution) {
@@ -326,6 +389,10 @@ void schedule_priority_p(Scheduler* scheduler) {
             } else if (process ->remaining_time <= 0 &&process->is_doing_io == false) {
                 process->state = TERMINATED;
                 terminated_process_cnt++;
+
+                // GanttChart 생성용
+                chart_item.end_time = current_simulation_time;
+                scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
                 
                 //SECTION - 성능측정
                 process->completion_time = current_simulation_time;
@@ -349,6 +416,9 @@ void schedule_priority_np(Scheduler* scheduler) {
         check_and_add_arrived_processes(scheduler, current_simulation_time);
         process_io_operations(scheduler, &terminated_process_cnt);
 
+        // GanttChart 생성용
+        GanttChart chart_item;
+
         if (current_process == NULL && scheduler->ready_queue_cnt > 0) {
             Process* highest_priority_process = scheduler->ready_queue[0];
             int highest_priority_process_idx = 0;
@@ -366,6 +436,9 @@ void schedule_priority_np(Scheduler* scheduler) {
             }
             current_process = highest_priority_process;
             current_process->state = RUNNING;
+
+            chart_item.start_time = current_simulation_time;
+            sprintf(chart_item.process_name, "P%d", current_process->pid);
             
             //SECTION - 성능측정
             if (current_process->is_first_execution) {
@@ -387,6 +460,10 @@ void schedule_priority_np(Scheduler* scheduler) {
             } else if (current_process ->remaining_time <= 0) {
                 current_process->state = TERMINATED;
                 terminated_process_cnt++;
+
+                // GanttChart 생성용
+                chart_item.end_time = current_simulation_time;
+                scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
                 
                 //SECTION - 성능측정
                 current_process->completion_time = current_simulation_time;

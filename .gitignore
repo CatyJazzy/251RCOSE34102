@@ -1,3 +1,4 @@
 .guideline.pdf
 test*
 src/test*
+obj/

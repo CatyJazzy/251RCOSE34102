@@ -3,6 +3,12 @@
 
 #include "process.h"
 
+typedef struct {
+    int start_time;
+    int end_time;
+    char process_name[10]; // "P100000" 최대 아이디 길이 고려 
+} GanttChart;
+
 // 스케줄링 알고리즘 타입 정의 
 typedef enum {
     FCFS,
@@ -28,6 +34,9 @@ typedef struct {
     
     int time_quantum;
     // int current;
+
+    GanttChart gantt_chart[100000];
+    int gantt_chart_cnt;
 } Scheduler;
 
 Scheduler* Config(void);
