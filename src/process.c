@@ -8,7 +8,6 @@ Process* create_process(int arrival_time, int cpu_burst_time, int priority) {
 
     // pid로 랜덤으로 선택된 숫자 사용 (0~10000) 
     // TODO - 같은 랜덤값 생성되었을 때? 중복 검증로직
-    srand(time(NULL));
     int random_number = rand() % 10001;
 
     process->pid = random_number;
@@ -29,6 +28,7 @@ Process* create_process(int arrival_time, int cpu_burst_time, int priority) {
     for (int i=0; i<process->io_count; i++) {
         // NOTE - io 요청시점은 config에서 정의 
         // process->io_request_times[i] = rand() % 5; 
+        process->io_request_times[i] = 0;  // 일단 0으로 초기화
         process->io_burst_times[i] = rand() % 3 + 1; // 1~3시간 임의 설정
     }
 
