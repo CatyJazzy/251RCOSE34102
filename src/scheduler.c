@@ -522,6 +522,9 @@ void schedule_priority_np(Scheduler* scheduler) {
     GanttChart idle_item;
     int is_idle = 0;
 
+    GanttChart chart_item;
+    int is_chart_item_initialized = 0;
+
     while (terminated_process_cnt < scheduler->process_cnt) {
          if (scheduler->ready_queue_cnt == 0) {
            handle_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
@@ -530,9 +533,6 @@ void schedule_priority_np(Scheduler* scheduler) {
         }
         check_and_add_arrived_processes(scheduler, current_simulation_time);
         process_io_operations(scheduler, &terminated_process_cnt);
-
-        // GanttChart 생성용
-        GanttChart chart_item;
 
         if (current_process == NULL && scheduler->ready_queue_cnt > 0) {
             Process* highest_priority_process = scheduler->ready_queue[0];
@@ -554,6 +554,7 @@ void schedule_priority_np(Scheduler* scheduler) {
 
             chart_item.start_time = current_simulation_time;
             sprintf(chart_item.process_name, "P%d", current_process->pid);
+            is_chart_item_initialized = 1;
             
             //SECTION - 성능측정
             if (current_process->is_first_execution) {
@@ -566,26 +567,35 @@ void schedule_priority_np(Scheduler* scheduler) {
 
         if (current_process != NULL) {
             current_process->remaining_time -= 1; 
+            printf("P%d가 실행되었습니다. (현재시간: %d)\n", current_process->pid, current_simulation_time);
 
             int is_moved_to_waiting = false;
             handle_io_task_of_process(current_process, scheduler, &is_moved_to_waiting);
 
             if (is_moved_to_waiting) {
+                if (is_chart_item_initialized == 1) {
+                    chart_item.end_time = current_simulation_time + 1;
+                    scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
+                    is_chart_item_initialized = 0;
+                }
                 current_process = NULL;
             } else if (current_process ->remaining_time <= 0) {
                 current_process->state = TERMINATED;
                 terminated_process_cnt++;
 
                 // GanttChart 생성용
-                chart_item.end_time = current_simulation_time;
-                scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
+                if (is_chart_item_initialized == 1) {
+                    chart_item.end_time = current_simulation_time + 1;
+                    scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
+                    is_chart_item_initialized = 0;
+                }
                 
                 //SECTION - 성능측정
-                current_process->completion_time = current_simulation_time;
+                current_process->completion_time = current_simulation_time + 1;
                 current_process->turnaround_time = current_process->completion_time - current_process->arrival_time;
                 current_process->waiting_time = current_process->turnaround_time - current_process->cpu_burst_time;
                 
-                printf("P%d가 종료되었습니다.\n", current_process->pid);
+                printf("P%d가 종료되었습니다. (현재시간: %d)\n", current_process->pid, current_simulation_time);
                 current_process = NULL;
             }
         }
