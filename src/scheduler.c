@@ -258,8 +258,8 @@ void schedule_sjf_p(Scheduler* scheduler) {
                 // 업데이트
                 chart_item.start_time = current_simulation_time;
                 sprintf(chart_item.process_name, "P%d", current_process->pid);
+                prev_process = current_process;
             }
-            prev_process = current_process;
 
             current_process->state = RUNNING;
             current_process->remaining_time -= 1; 
@@ -424,8 +424,9 @@ void schedule_priority_p(Scheduler* scheduler) {
                 // 업데이트
                 chart_item.start_time = current_simulation_time;
                 sprintf(chart_item.process_name, "P%d", process->pid);
+                prev_process = process;
             }
-            prev_process = process;
+
             
             printf("P%d가 실행되었습니다.\n", process->pid);
 
