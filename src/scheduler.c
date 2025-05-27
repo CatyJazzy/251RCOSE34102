@@ -298,18 +298,20 @@ void schedule_sjf_p(Scheduler* scheduler) {
 
             if (is_moved_to_waiting) {
                 // ready-Q 제거
+                chart_item.end_time = current_simulation_time + 1;
+                scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
                 remove_from_ready_queue(scheduler, current_process_idx);
                 prev_process = NULL;
             } else if (current_process ->remaining_time <= 0 &&current_process->is_doing_io == false) {
                 current_process->state = TERMINATED;
                 terminated_process_cnt++;
 
-                chart_item.end_time = current_simulation_time;
+                chart_item.end_time = current_simulation_time + 1;
                 scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
                 prev_process = NULL;
 
                 //SECTION - 성능측정
-                current_process->completion_time = current_simulation_time;
+                current_process->completion_time = current_simulation_time + 1;
                 current_process->turnaround_time = current_process->completion_time - current_process->arrival_time;
                 current_process->waiting_time = current_process->turnaround_time - current_process->cpu_burst_time;
                 
@@ -437,6 +439,9 @@ void schedule_priority_p(Scheduler* scheduler) {
             int process_idx = 0;  
 
             for (int i=0; i<scheduler->ready_queue_cnt; i++) {
+
+                if (scheduler->ready_queue[i]->state == TERMINATED) continue;
+
                 // NOTE - priority 작을수록 중요도가 높음 (동점일 때는 도착시간 더 빠른쪽이 우선!)
                 if(scheduler->ready_queue[i]->priority <= process->priority) {
                     bool is_more_important = (scheduler->ready_queue[i]->priority == process->priority && 
@@ -461,22 +466,24 @@ void schedule_priority_p(Scheduler* scheduler) {
                 prev_process = process;
             }
 
-            
-            printf("P%d가 실행되었습니다.\n", process->pid);
+            process->state = RUNNING;
+            process->remaining_time -= 1;
+
+            printf("P%d가 실행되었습니다. (현재시간: %d)\n", process->pid, current_simulation_time);
 
             //SECTION - 성능측정
             if (process->is_first_execution) {
                 process->response_time = current_simulation_time;
                 process->is_first_execution = false;
             }
-            
-            process->state = RUNNING;
-            process->remaining_time -= 1;
+        
 
             int is_moved_to_waiting = false;
             handle_io_task_of_process(process, scheduler, &is_moved_to_waiting);
 
             if (is_moved_to_waiting) {
+                chart_item.end_time = current_simulation_time + 1;
+                scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
                 remove_from_ready_queue(scheduler, process_idx);  
                 prev_process = NULL;
             } else if (process ->remaining_time <= 0 &&process->is_doing_io == false) {
@@ -484,12 +491,12 @@ void schedule_priority_p(Scheduler* scheduler) {
                 terminated_process_cnt++;
 
                 // GanttChart 생성용
-                chart_item.end_time = current_simulation_time;
+                chart_item.end_time = current_simulation_time + 1;
                 scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
                 prev_process = NULL;
                 
                 //SECTION - 성능측정
-                process->completion_time = current_simulation_time;
+                process->completion_time = current_simulation_time + 1;
                 process->turnaround_time = process->completion_time - process->arrival_time;
                 process->waiting_time = process->turnaround_time - process->cpu_burst_time;
                 
