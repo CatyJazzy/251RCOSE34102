@@ -57,3 +57,20 @@ void remove_from_ready_queue(Scheduler* scheduler, int idx) {
     }
     scheduler->ready_queue_cnt--;
 }
+
+void handle_gantt_chart_idle(Scheduler* scheduler, int* is_idle, GanttChart* idle_item, int current_simulation_time) {
+    if (!(*is_idle)) {
+        idle_item-> start_time = current_simulation_time;
+        sprintf(idle_item->process_name, "IDLE");
+        *is_idle = 1;
+    }
+}
+
+
+void end_gantt_chart_idle(Scheduler* scheduler, int* is_idle, GanttChart* idle_item, int current_simulation_time) {
+    if (*is_idle) {
+        idle_item->end_time = current_simulation_time;
+        scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = *idle_item;
+        *is_idle = 0;
+    }
+}

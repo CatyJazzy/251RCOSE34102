@@ -16,4 +16,8 @@ void handle_io_task_of_process(Process* process, Scheduler* scheduler, int* is_m
 // ready queue에서 프로세스 제거
 void remove_from_ready_queue(Scheduler* scheduler, int idx);
 
+
+void handle_gantt_chart_idle(Scheduler* scheduler, int* is_idle, GanttChart* idle_item, int current_simulation_time);
+void end_gantt_chart_idle(Scheduler* scheduler, int* is_idle, GanttChart* idle_item, int current_simulation_time);
+
 #endif 

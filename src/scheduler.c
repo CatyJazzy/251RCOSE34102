@@ -135,17 +135,9 @@ void schedule_sjf_np(Scheduler* scheduler) {
     while(terminated_process_cnt < scheduler->process_cnt) {
 
         if (scheduler->ready_queue_cnt == 0) {
-            if (!is_idle) {
-                idle_item.start_time = current_simulation_time;
-                sprintf(idle_item.process_name, "IDLE");
-                is_idle = 1;
-            }
+           handle_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
         } else {
-            if (is_idle) {
-                idle_item.end_time = current_simulation_time;
-                scheduler-> gantt_chart[scheduler->gantt_chart_cnt++] = idle_item;
-                is_idle = 0;
-            }
+            end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
         }
 
         // 도착한 프로세스 확인함
@@ -215,16 +207,23 @@ void schedule_sjf_np(Scheduler* scheduler) {
         current_simulation_time++;   
     }
 
-    if (is_idle) {
-        idle_item.end_time = current_simulation_time;
-        scheduler -> gantt_chart[scheduler->gantt_chart_cnt++] = idle_item;
-    }
+    end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
 }
 void schedule_sjf_p(Scheduler* scheduler) {
     int current_simulation_time = 0;
     int terminated_process_cnt = 0;
 
+    int is_idle = 0;
+    GanttChart idle_item;
+
     while(terminated_process_cnt < scheduler->process_cnt) {
+
+        if (scheduler->ready_queue_cnt == 0) {
+           handle_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
+        } else {
+            end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
+        }
+        
         // 도착한 프로세스 확인함
         check_and_add_arrived_processes(scheduler, current_simulation_time);
         process_io_operations(scheduler, &terminated_process_cnt);
@@ -286,12 +285,23 @@ void schedule_sjf_p(Scheduler* scheduler) {
         printf("현재 시간: %d\n", current_simulation_time);
         current_simulation_time++;
     }
+
+    end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
 }
 void schedule_fcfs(Scheduler* scheduler) {
     int current_simulation_time = 0;
     int terminated_process_cnt = 0;
 
+    GanttChart idle_item;
+    int is_idle = 0;
+
     while (terminated_process_cnt < scheduler->process_cnt) {
+         if (scheduler->ready_queue_cnt == 0) {
+           handle_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
+        } else {
+            end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
+        }
+
         // 도착한 프로세스 확인함
         check_and_add_arrived_processes(scheduler, current_simulation_time);
         process_io_operations(scheduler, &terminated_process_cnt);
@@ -341,12 +351,21 @@ void schedule_fcfs(Scheduler* scheduler) {
         printf("현재 시간: %d\n", current_simulation_time);
         current_simulation_time++;
     }
+    end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
 }
 void schedule_priority_p(Scheduler* scheduler) {
     int current_simulation_time = 0;
     int terminated_process_cnt = 0;
 
+    GanttChart idle_item;
+    int is_idle = 0;
+
     while (terminated_process_cnt < scheduler->process_cnt) {
+        if (scheduler->ready_queue_cnt == 0) {
+           handle_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
+        } else {
+            end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
+        }
         check_and_add_arrived_processes(scheduler, current_simulation_time);
         process_io_operations(scheduler, &terminated_process_cnt);
 
@@ -406,13 +425,23 @@ void schedule_priority_p(Scheduler* scheduler) {
         printf("현재 시간: %d\n", current_simulation_time);
         current_simulation_time++;
     }
+
+    end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
 }
 void schedule_priority_np(Scheduler* scheduler) {
     int current_simulation_time = 0;
     int terminated_process_cnt = 0;
     Process* current_process = NULL;
 
+    GanttChart idle_item;
+    int is_idle = 0;
+
     while (terminated_process_cnt < scheduler->process_cnt) {
+         if (scheduler->ready_queue_cnt == 0) {
+           handle_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
+        } else {
+            end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
+        }
         check_and_add_arrived_processes(scheduler, current_simulation_time);
         process_io_operations(scheduler, &terminated_process_cnt);
 
@@ -477,4 +506,5 @@ void schedule_priority_np(Scheduler* scheduler) {
         printf("현재 시간: %d\n", current_simulation_time);
         current_simulation_time++;
     }
+    end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
 }
