@@ -3,19 +3,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-Process* create_process(int arrival_time, int cpu_burst_time, int priority) {
+Process* create_process(int pid, int arrival_time, int cpu_burst_time, int priority) {
     Process* process = (Process*)malloc(sizeof(Process));
 
-    // pid로 랜덤으로 선택된 숫자 사용 (0~10000) 
-    // TODO - 같은 랜덤값 생성되었을 때? 중복 검증로직
-    int random_number = rand() % 10001;
-
-    process->pid = random_number;
+    process->pid = pid;
     process->arrival_time = arrival_time;
     process->cpu_burst_time = cpu_burst_time;
     process->remaining_time = cpu_burst_time; // 초기값은 전체 cpu burst time일 것임
     process->priority = priority;
-    process->relative_cpu_execution_time = 0;
 
     process->state = NEW;
 
@@ -25,13 +20,10 @@ Process* create_process(int arrival_time, int cpu_burst_time, int priority) {
     process->completion_time = 0;
     process->is_first_execution = true;
 
-    process->io_count = rand() % (MAX_IO_COUNT - 1) + 2;
-    for (int i=0; i<process->io_count; i++) {
-        // NOTE - io 요청시점은 config에서 정의 
-        // process->io_request_times[i] = rand() % 5; 
-        process->io_request_times[i] = 0;  // 일단 0으로 초기화
-        process->io_burst_times[i] = rand() % 3 + 1; // 1~3시간 임의 설정
-    }
+    // process->io_count = rand() % (MAX_IO_COUNT - 1) + 2; // 2~3개 임의 설정
+    
+    // NOTE - i/o작업 설정 내용은 Config함수에서 Cpu burst time을 입력받은 후에 진행
+    process->io_count = 0; // 임시 설정
 
     process->current_io_idx = 0;
     process->io_remaining_time = 0;

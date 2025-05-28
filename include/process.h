@@ -34,12 +34,11 @@ typedef struct {
     int io_burst_times[MAX_IO_COUNT];
     int current_io_idx;
 
-    int relative_cpu_execution_time; // io작업 기준 cpu에서 실행된 상대적 시간
     int io_remaining_time; // 현재 처리되는 io작업 기준임
     bool is_doing_io;
 } Process;
 
-Process * create_process(int arrival_time, int cpu_burst_time, int priority);
+Process * create_process(int pid, int arrival_time, int cpu_burst_time, int priority);
 void destroy_process(Process * process);
 void print_process(Process * process);
 void sort_io_requests(Process* process);
