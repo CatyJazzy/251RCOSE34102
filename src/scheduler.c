@@ -180,19 +180,20 @@ void schedule_sjf_np(Scheduler* scheduler) {
 
         update_arrivals(scheduler, current_simulation_time);
 
-        process_io_operations(scheduler, &terminated_process_cnt);
-
         update_idle_state(scheduler, &is_idle, &idle_item, current_simulation_time, current_process);
 
         print_scheduling_debug_info(scheduler, current_process, current_simulation_time);
 
         if (is_new_process_need(scheduler, current_process)) {
             Process* shortest_process = select_shortest_process(scheduler, current_process);
-
-            start_process(shortest_process, &chart_item, &is_chart_item_initialized, current_simulation_time);
-
-            current_process = shortest_process;
+            
+            if (shortest_process != NULL) {
+                start_process(shortest_process, &chart_item, &is_chart_item_initialized, current_simulation_time);
+                current_process = shortest_process;
+            }
         }
+
+        process_io_operations(scheduler, &terminated_process_cnt);
 
         if (current_process != NULL) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);

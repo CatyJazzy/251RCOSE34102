@@ -78,6 +78,10 @@ bool is_new_process_need(Scheduler* scheduler, Process * current_process) {
 }
 
 Process* select_shortest_process(Scheduler* scheduler, Process* current_process) {
+    if (scheduler->ready_queue_cnt <= 0) {
+        return NULL;
+    }
+
     Process* shortest_process = scheduler->ready_queue[0]; // 임시 설정
     int shortest_process_idx = 0;
 
@@ -94,7 +98,9 @@ Process* select_shortest_process(Scheduler* scheduler, Process* current_process)
         }
     }
     
-    remove_from_ready_queue(scheduler, shortest_process_idx);
+    if (scheduler->ready_queue_cnt > 0 && shortest_process_idx < scheduler->ready_queue_cnt) {
+        remove_from_ready_queue(scheduler, shortest_process_idx);
+    }
     return shortest_process;
 }
 
