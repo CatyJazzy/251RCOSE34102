@@ -62,50 +62,60 @@ Scheduler* Config() {
     // 프로세스 생성
     for (int i = 0; i < process_cnt; i++) {
          // TODO - 터무니 없는 값 예외처리 (또는 모순되는 값)
-        scheduler->process_arr[i] = create_process(0, 0, 0);
+        scheduler->process_arr[i] = create_process(i + 1, 0, 0, 0);  
         printf("%d번째 프로세스의 도착 시간을 입력하세요 : ", i+1);
         scanf("%d", &scheduler->process_arr[i]->arrival_time);
         printf("%d번째 프로세스의 CPU 실행 시간을 입력하세요 : ", i+1);
         scanf("%d", &scheduler->process_arr[i]->cpu_burst_time);
         scheduler->process_arr[i]->remaining_time = scheduler->process_arr[i]->cpu_burst_time;  
+
+        if (scheduler->process_arr[i]->cpu_burst_time < 1) {
+            printf("CPU 실행 시간은 1 이상이어야 합니다. 기본값으로 1로 설정됩니다.\n");
+            scheduler->process_arr[i]->cpu_burst_time = 1;
+        } 
+        if (scheduler->process_arr[i]->cpu_burst_time > 10) {
+            printf("CPU 실행 시간은 10 이하이어야 합니다. 기본값으로 10으로 설정됩니다.\n");
+            scheduler->process_arr[i]->cpu_burst_time = 10;
+        }
+
         printf("%d번째 프로세스의 우선순위를 입력하세요 : ", i+1);
         scanf("%d", &scheduler->process_arr[i]->priority);
         printf("\n");
     }
 
     for (int i=0; i<process_cnt; i++) {
-        // CPU 실행 시간이 1인 경우 IO 요청 없이 예외처리
-        if (scheduler->process_arr[i]->cpu_burst_time <= 1) {
-            scheduler->process_arr[i]->io_count = 0;
-        } else {
-            // FIXME - I/O 요청 생성 모순 로직 수정 부분 (5.28)
-            int remaining_time = scheduler->process_arr[i]->cpu_burst_time;
-            int last_io_time = 0;  // 마지막 IO 요청 시간 추적
+        // cpu_burst_time이 1일 때는 요청 발생하지 않도록 함
+        if (scheduler->process_arr[i]->cpu_burst_time == 1) {
+            scheduler->process_arr[i]->io_count = 0; 
+            continue;
+        }  
 
-            for (int j=0; j<scheduler->process_arr[i]->io_count; j++) {
-                // 남은 시간이 2 이상일 때만 IO 요청 가능
-                if (remaining_time >= 2) {
-                    // 이전 IO 요청 이후에만 새로운 IO 요청 가능
-                    int max_io_time = remaining_time;  // CPU 실행 시간 전체를 범위로
-                    int min_io_time = last_io_time + 1;  // 이전 IO 요청 이후
-                    
-                    if (min_io_time >= max_io_time) {
-                        // 더 이상 IO 요청을 넣을 수 없음
-                        scheduler->process_arr[i]->io_count = j;
-                        break;
-                    }
-                    
-                    // min_io_time과 max_io_time 사이에서 랜덤하게 선택
-                    scheduler->process_arr[i]->io_request_times[j] = min_io_time + (rand() % (max_io_time - min_io_time));
-                    last_io_time = scheduler->process_arr[i]->io_request_times[j];
-                    remaining_time -= scheduler->process_arr[i]->io_request_times[j];
-                } else {
-                    // 남은 시간이 부족하면 IO 요청 취소
-                    scheduler->process_arr[i]->io_count = j;
-                    break;
-                }
-            }
+        // 1 ~ min(cpu_burst_time, 3) 범위에서 랜덤으로 IO 요청 빈도 결정
+        int max_io_frequency = (scheduler->process_arr[i]->cpu_burst_time < MAX_IO_COUNT) ? 
+            scheduler->process_arr[i]->cpu_burst_time : MAX_IO_COUNT;
+        scheduler->process_arr[i]->io_count = rand() % max_io_frequency + 1;
+
+        int possible_times[scheduler->process_arr[i]->cpu_burst_time - 1];
+        for (int t=1; t<scheduler->process_arr[i]->cpu_burst_time; t++) {
+            possible_times[t-1] = t;
         }
+
+        int remaining_count = scheduler->process_arr[i]->cpu_burst_time - 1;
+        for (int j=0; j<scheduler->process_arr[i]->io_count; j++) {
+            int random_index = rand() % remaining_count;
+            scheduler->process_arr[i]->io_request_times[j] = possible_times[random_index];
+
+            // 선택된 인덱스의 값을 배열의 마지막으로 이동하고 remaining_count 감소
+            int temp = possible_times[random_index];
+            possible_times[random_index] = possible_times[remaining_count - 1];
+            possible_times[remaining_count - 1] = temp;
+            remaining_count--;
+
+            // [버스트 시간] 1~3시간 중 랜덤으로 설정
+            scheduler->process_arr[i]->io_burst_times[j] = rand() % 3 + 1;
+        }
+
+        // IO 요청 시점 정렬
         sort_io_requests(scheduler->process_arr[i]);
     }
 
@@ -168,89 +178,28 @@ void schedule_sjf_np(Scheduler* scheduler) {
 
     while(terminated_process_cnt < scheduler->process_cnt) {
 
-        // 도착한 프로세스 확인함
-        check_and_add_arrived_processes(scheduler, current_simulation_time);
+        update_arrivals(scheduler, current_simulation_time);
+
         process_io_operations(scheduler, &terminated_process_cnt);
 
-        if (scheduler->ready_queue_cnt == 0) {
-           handle_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
-        } else {
-            end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
-        }
+        update_idle_state(scheduler, &is_idle, &idle_item, current_simulation_time, current_process);
 
         print_scheduling_debug_info(scheduler, current_process, current_simulation_time);
 
-        if (current_process == NULL && scheduler->ready_queue_cnt > 0) {
-           Process* shortest_process = scheduler->ready_queue[0]; // 임시 설정
-           int shortest_process_idx = 0;
+        if (is_new_process_need(scheduler, current_process)) {
+            Process* shortest_process = select_shortest_process(scheduler, current_process);
 
-            for (int i=0; i<scheduler->ready_queue_cnt; i++) {
-                if (scheduler->ready_queue[i]->cpu_burst_time < shortest_process->cpu_burst_time) {
-                    shortest_process = scheduler->ready_queue[i]; // Shorted Job 프로세스 선택
-                    shortest_process_idx = i;
-                } else if (scheduler->ready_queue[i]->cpu_burst_time == shortest_process->cpu_burst_time) {
-                    // 동점 시 도착시간 기준
-                    if (scheduler->ready_queue[i]->arrival_time < shortest_process->arrival_time) {
-                        shortest_process = scheduler->ready_queue[i];
-                        shortest_process_idx = i;
-                    }
-                }
-            }
-
-            chart_item.start_time = current_simulation_time;
-            sprintf(chart_item.process_name, "P%d", shortest_process->pid);
-            is_chart_item_initialized = 1;
+            start_process(shortest_process, &chart_item, &is_chart_item_initialized, current_simulation_time);
 
             current_process = shortest_process;
-            current_process->state = RUNNING;
-            remove_from_ready_queue(scheduler, shortest_process_idx);
-            
-            //SECTION - 성능측정
-            if (current_process->is_first_execution) {
-                current_process->response_time = current_simulation_time;
-                current_process->is_first_execution = false;
-            }
         }
 
         if (current_process != NULL) {
-            current_process->remaining_time -= 1; // CPU 실행
-            current_process->relative_cpu_execution_time += 1;
-            printf("P%d가 실행되었습니다. (현재시간: %d)\n", current_process->pid, current_simulation_time);
-
-            int is_moved_to_waiting = false;
-            handle_io_task_of_process(current_process, scheduler, &is_moved_to_waiting);
-
-            if (is_moved_to_waiting) {
-                if (is_chart_item_initialized == 1) {
-                    chart_item.end_time = current_simulation_time + 1;
-                    scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
-                    is_chart_item_initialized = 0;
-                }
-                current_process = NULL;
-            } else if (current_process ->remaining_time <= 0) {
-                current_process->state = TERMINATED;
-                terminated_process_cnt++;
-
-                // GanttChart 생성용
-                if (is_chart_item_initialized == 1) {
-                    chart_item.end_time = current_simulation_time + 1;
-                    scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
-                    is_chart_item_initialized = 0;
-                }
-                
-                //SECTION - 성능측정
-                current_process->completion_time = current_simulation_time + 1;
-                current_process->turnaround_time = current_process->completion_time - current_process->arrival_time;
-                current_process->waiting_time = current_process->turnaround_time - current_process->cpu_burst_time;
-                
-                printf("P%d가 종료되었습니다. (현재시간: %d)\n", current_process->pid, current_simulation_time);
-                current_process = NULL;
-            }
+            execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
         }
-        printf("현재 시간: %d\n", current_simulation_time);
+
         current_simulation_time++;   
     }
-
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
 }
 void schedule_sjf_p(Scheduler* scheduler) {
@@ -273,7 +222,7 @@ void schedule_sjf_p(Scheduler* scheduler) {
         }
         
         // 도착한 프로세스 확인함
-        check_and_add_arrived_processes(scheduler, current_simulation_time);
+        update_arrivals(scheduler, current_simulation_time);
         process_io_operations(scheduler, &terminated_process_cnt);
         
         Process* current_process = NULL;
@@ -435,7 +384,7 @@ void schedule_fcfs(Scheduler* scheduler) {
         }
 
         // 도착한 프로세스 확인함
-        check_and_add_arrived_processes(scheduler, current_simulation_time);
+        update_arrivals(scheduler, current_simulation_time);
         process_io_operations(scheduler, &terminated_process_cnt);
 
         if (current_process == NULL && scheduler->ready_queue_cnt > 0) {
@@ -511,7 +460,7 @@ void schedule_priority_p(Scheduler* scheduler) {
         } else {
             end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
         }
-        check_and_add_arrived_processes(scheduler, current_simulation_time);
+        update_arrivals(scheduler, current_simulation_time);
         process_io_operations(scheduler, &terminated_process_cnt);
 
         Process* current_process = NULL;
@@ -591,7 +540,6 @@ void schedule_priority_p(Scheduler* scheduler) {
             current_process->state = RUNNING;
             current_process->remaining_time -= 1;
             
-            current_process->relative_cpu_execution_time += 1;
             printf("P%d가 실행되었습니다. (현재시간: %d)\n", current_process->pid, current_simulation_time);
 
             //SECTION - 성능측정
@@ -660,7 +608,7 @@ void schedule_priority_np(Scheduler* scheduler) {
     int is_chart_item_initialized = 0;
 
     while (terminated_process_cnt < scheduler->process_cnt) {
-        check_and_add_arrived_processes(scheduler, current_simulation_time);
+        update_arrivals(scheduler, current_simulation_time);
         process_io_operations(scheduler, &terminated_process_cnt);
 
         if (scheduler->ready_queue_cnt == 0 && current_process == NULL) {
@@ -703,7 +651,6 @@ void schedule_priority_np(Scheduler* scheduler) {
 
         if (current_process != NULL) {
             current_process->remaining_time -= 1; 
-            current_process->relative_cpu_execution_time += 1;
             printf("P%d가 실행되었습니다. (현재시간: %d)\n", current_process->pid, current_simulation_time);
 
             int is_moved_to_waiting = false;
