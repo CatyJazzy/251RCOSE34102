@@ -102,6 +102,31 @@ Process* select_shortest_process(Scheduler* scheduler, Process* current_process)
     return shortest_process;
 }
 
+Process* select_highest_process(Scheduler* scheduler, Process* current_process) {
+    if (scheduler->ready_queue_cnt <= 0) {
+        return NULL;
+    }
+
+    Process* highest_process = scheduler->ready_queue[0];
+    int highest_process_idx = 0;
+
+    for (int i=1; i<scheduler->ready_queue_cnt; i++) {
+        if (scheduler->ready_queue[i]->priority < highest_process->priority) {
+            highest_process = scheduler->ready_queue[i];
+            highest_process_idx = i;
+        } else if (scheduler->ready_queue[i]->priority == highest_process->priority) {
+            // 동점 시 도착시간 기준
+            if (scheduler->ready_queue[i]->arrival_time < highest_process->arrival_time) {
+                highest_process = scheduler->ready_queue[i];
+                highest_process_idx = i;
+            }
+        }
+    }
+    remove_from_ready_queue(scheduler, highest_process_idx);
+    return highest_process;
+}
+
+
 // 프로세스를 실행하는 것이 아니라 시작 환경을 세팅하는 것
 void start_process(Process* process, GanttChart* chart_item, int* is_chart_item_initialized, int current_simulation_time) {
     process->state = RUNNING;
