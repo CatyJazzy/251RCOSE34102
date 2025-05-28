@@ -214,159 +214,43 @@ void schedule_sjf_p(Scheduler* scheduler) {
     int is_idle = 0;
     GanttChart idle_item;
 
-    Process* prev_process = NULL;
-    Process* running_process = NULL;
+    Process* current_process = NULL;
     GanttChart chart_item;
+    int is_chart_item_initialized = 0;
 
-    while(terminated_process_cnt < scheduler->process_cnt) {
-
-        if (scheduler->ready_queue_cnt == 0) {
-           handle_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
-        } else {
-            end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
-        }
-        
+    while(terminated_process_cnt < scheduler->process_cnt) {    
         // 도착한 프로세스 확인함
         update_arrivals(scheduler, current_simulation_time);
-        process_io_operations(scheduler, &terminated_process_cnt);
+
+        update_idle_state(scheduler, &is_idle, &idle_item, current_simulation_time, current_process);
+
+        print_scheduling_debug_info(scheduler, current_process, current_simulation_time);
         
-        Process* current_process = NULL;
-        int current_process_idx = 0;
+        Process * shortest_process = select_shortest_remaining_process(scheduler, current_process);
 
-        // 실행중 프로세스가 있을 때
-        if (running_process != NULL) {
-            Process* shortest_process = scheduler->ready_queue[0]; // 임시 설정
-            int shortest_process_idx = 0;
+        // 선점될 때 처리
+        if (shortest_process != NULL) {
+            if(current_process) {
+                current_process->state = READY;
+                scheduler->ready_queue[scheduler->ready_queue_cnt++] = current_process;
 
-            for (int i=1; i<scheduler->ready_queue_cnt; i++) {
-                if (scheduler->ready_queue[i]->state == TERMINATED) {
-                    continue;
-                }
-
-                if (shortest_process == NULL || 
-                    scheduler->ready_queue[i]->remaining_time < shortest_process->remaining_time) {
-                    shortest_process = scheduler->ready_queue[i]; // Shorted Job 프로세스 선택
-                    shortest_process_idx = i;
-                } else if (scheduler->ready_queue[i]->remaining_time == shortest_process->remaining_time) {
-                    if (scheduler->ready_queue[i]->arrival_time < shortest_process->arrival_time) {
-                        shortest_process = scheduler->ready_queue[i];
-                        shortest_process_idx = i;
-                    }
-                }
-            }
-
-            // 선점 여부 체크
-            if (shortest_process->remaining_time < running_process->remaining_time ||
-                (shortest_process->remaining_time == running_process->remaining_time &&
-                shortest_process->arrival_time < running_process->arrival_time)) {
-                running_process->state = READY;
-                scheduler->ready_queue[scheduler->ready_queue_cnt++] = running_process;
-
-                current_process = shortest_process;
-                current_process_idx = shortest_process_idx;
-                running_process = current_process;
-            } else {
-                current_process = running_process;
-                current_process_idx = -1;
-            }
-        }
-        // 실행중 프로세스가 없고 레디큐에 프로세스가 있을 때
-        else if (scheduler->ready_queue_cnt > 0) {
-            Process* shortest_process = scheduler->ready_queue[0];
-            int shortest_process_idx = 0;
-
-            for (int i=1; i<scheduler->ready_queue_cnt; i++) {
-                if (scheduler->ready_queue[i]->state == TERMINATED) {
-                    continue;
-                }
-
-                if (scheduler->ready_queue[i]->remaining_time < shortest_process->remaining_time) {
-                    shortest_process = scheduler->ready_queue[i];
-                    shortest_process_idx = i;
-                } else if (scheduler->ready_queue[i]->remaining_time == shortest_process->remaining_time) {
-                    if (scheduler->ready_queue[i]->arrival_time < shortest_process->arrival_time) {
-                        shortest_process = scheduler->ready_queue[i];
-                        shortest_process_idx = i;
-                    }
-                }
-            }
-
-            current_process = shortest_process;
-            current_process_idx = shortest_process_idx;
-            running_process = current_process;
-        }
-        
-        if (current_process != NULL) {
-            if (prev_process != current_process) {
-                if(prev_process != NULL) {
-                    // 이전 프로세스 실행내역 기록
-                    chart_item.end_time = current_simulation_time;  
+                if(is_chart_item_initialized) {
+                    chart_item.end_time = current_simulation_time;
                     scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
-                }
-
-                // 업데이트
-                chart_item.start_time = current_simulation_time;
-                sprintf(chart_item.process_name, "P%d", current_process->pid);
-                prev_process = current_process;
+                    is_chart_item_initialized = 0;
+                } 
             }
 
-            current_process->state = RUNNING;
-            current_process->remaining_time -= 1; 
-
-            printf("P%d가 실행되었습니다. (현재시간: %d)\n", current_process->pid, current_simulation_time);
-
-            //SECTION - 성능측정
-            if (current_process->is_first_execution) {
-                current_process->response_time = current_simulation_time;
-                current_process->is_first_execution = false;
-            }
-
-            int is_moved_to_waiting = false;
-            handle_io_task_of_process(current_process, scheduler, &is_moved_to_waiting);
-
-            if (is_moved_to_waiting) {
-                // ready-Q 제거
-                chart_item.end_time = current_simulation_time + 1;  
-                scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
-                remove_from_ready_queue(scheduler, current_process_idx);
-                prev_process = NULL;
-                running_process = NULL;  // IO 작업으로 이동 시 running_process 초기화
-            } else if (current_process ->remaining_time <= 0 &&current_process->is_doing_io == false) {
-                current_process->state = TERMINATED;
-                terminated_process_cnt++;
-
-                chart_item.end_time = current_simulation_time + 1;  
-                scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
-                prev_process = NULL;
-                running_process = NULL;  // 프로세스 종료 시 running_process 초기화
-                
-                //SECTION - 성능측정
-                current_process->completion_time = current_simulation_time + 1;
-                current_process->turnaround_time = current_process->completion_time - current_process->arrival_time;
-                current_process->waiting_time = current_process->turnaround_time - current_process->cpu_burst_time;
-                
-                printf("P%d가 종료되었습니다. (현재시간: %d)\n", current_process->pid, current_simulation_time);
-                if (current_process_idx >= 0) {
-                    remove_from_ready_queue(scheduler, current_process_idx);
-                }
-            }
-        } else {
-            // ready-Q 비어있을 때 초기화
-            if (prev_process != NULL) {
-                chart_item.end_time = current_simulation_time;  
-                scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
-                prev_process = NULL;
-            }
+            start_process(shortest_process, &chart_item, &is_chart_item_initialized, current_simulation_time);
+            current_process = shortest_process;
         }
 
-        printf("현재 시간: %d\n", current_simulation_time);
-        current_simulation_time++;
-    }
+        process_io_operations(scheduler, &terminated_process_cnt);
 
-    // 마지막 남은 구간 처리
-    if (prev_process != NULL) {
-        chart_item.end_time = current_simulation_time + 1;
-        scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
+        if (current_process != NULL) {
+            execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
+        }
+        current_simulation_time++;
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
 }

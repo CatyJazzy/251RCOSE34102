@@ -102,6 +102,37 @@ Process* select_shortest_process(Scheduler* scheduler, Process* current_process)
     return shortest_process;
 }
 
+Process* select_shortest_remaining_process(Scheduler* scheduler, Process* current_process) {
+    if (scheduler->ready_queue_cnt <= 0) {
+        return NULL;
+    }
+
+    Process* shortest_process = scheduler->ready_queue[0];
+    int shortest_process_idx = 0;
+
+    for (int i=1; i<scheduler->ready_queue_cnt; i++) {
+        if (scheduler->ready_queue[i]->remaining_time < shortest_process->remaining_time) {
+            shortest_process = scheduler->ready_queue[i];
+            shortest_process_idx = i;
+        } else if (scheduler->ready_queue[i]->remaining_time == shortest_process->remaining_time) {
+            // 동점 시 도착시간 기준
+            if (scheduler->ready_queue[i]->arrival_time < shortest_process->arrival_time) {
+                shortest_process = scheduler->ready_queue[i];
+                shortest_process_idx = i;
+            }
+        }
+    }
+    
+    if (current_process != NULL) {
+        if (current_process->remaining_time <= shortest_process->remaining_time) {
+            return NULL;  // 현재 실행 중인 프로세스가 더 짧거나 같으면 선점하지 않음
+        }
+    }
+    
+    remove_from_ready_queue(scheduler, shortest_process_idx);
+    return shortest_process;
+}
+
 Process* select_highest_process(Scheduler* scheduler, Process* current_process) {
     if (scheduler->ready_queue_cnt <= 0) {
         return NULL;
