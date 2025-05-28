@@ -252,8 +252,8 @@ void schedule_sjf_p(Scheduler* scheduler) {
         Process* current_process = NULL;
         int current_process_idx = 0;
 
-        // 실행중 & 레디큐 프로세스 모두 있을 때
-        if (running_process == NULL && scheduler->ready_queue_cnt > 0) {
+        // 실행중 프로세스가 있을 때
+        if (running_process != NULL) {
             Process* shortest_process = scheduler->ready_queue[0]; // 임시 설정
             int shortest_process_idx = 0;
 
@@ -274,16 +274,13 @@ void schedule_sjf_p(Scheduler* scheduler) {
                 }
             }
 
-            // 선점 확인
-            if (running_process == NULL || 
-                shortest_process->remaining_time < running_process->remaining_time || 
+            // 선점 여부 체크
+            if (shortest_process->remaining_time < running_process->remaining_time ||
                 (shortest_process->remaining_time == running_process->remaining_time &&
                 shortest_process->arrival_time < running_process->arrival_time)) {
-                if (running_process != NULL) {
-                    running_process->state = READY;
-                    scheduler->ready_queue[scheduler->ready_queue_cnt++] = running_process;
-                }
-                
+                running_process->state = READY;
+                scheduler->ready_queue[scheduler->ready_queue_cnt++] = running_process;
+
                 current_process = shortest_process;
                 current_process_idx = shortest_process_idx;
                 running_process = current_process;
@@ -292,13 +289,7 @@ void schedule_sjf_p(Scheduler* scheduler) {
                 current_process_idx = -1;
             }
         }
-        // 실행중 프로세스 O, 레디큐X일 때
-        else if (running_process != NULL && scheduler->ready_queue_cnt == 0) {
-            current_process = running_process;
-            current_process_idx = -1;
-        }
-        
-        // 실행중 프로세스 X, 레디큐O일 때
+        // 실행중 프로세스가 없고 레디큐에 프로세스가 있을 때
         else if (scheduler->ready_queue_cnt > 0) {
             Process* shortest_process = scheduler->ready_queue[0];
             int shortest_process_idx = 0;
@@ -499,8 +490,8 @@ void schedule_priority_p(Scheduler* scheduler) {
         Process* current_process = NULL;
         int current_process_idx = 0;
 
-        // 실행중 프로세스 & 레디큐 프로세스 모두 존재
-        if (running_process != NULL && scheduler->ready_queue_cnt > 0) {
+        // 실행중 프로세스가 있을 때
+        if (running_process != NULL) {
             Process* highest_process = scheduler->ready_queue[0]; // 임시 설정
             int highest_process_idx = 0;  
 
@@ -533,12 +524,7 @@ void schedule_priority_p(Scheduler* scheduler) {
                 current_process_idx = -1;
             }
         }
-        // 실행중 프로세스 O, 레디큐X일 때
-        else if (running_process != NULL && scheduler->ready_queue_cnt == 0) {
-            current_process = running_process;
-            current_process_idx = -1;
-        } 
-        // 실행중 프로세스 X, 레디큐O일 때
+        // 실행중 프로세스가 없고 레디큐에 프로세스가 있을 때
         else if (scheduler->ready_queue_cnt > 0) {
             Process* highest_process = scheduler->ready_queue[0];
             int highest_process_idx = 0;
