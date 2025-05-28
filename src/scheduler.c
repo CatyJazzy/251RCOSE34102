@@ -44,6 +44,12 @@ Scheduler* Config() {
 
     printf("\n3. 시뮬레이션 할 타임 퀀텀을 입력하세요 : ");
     scanf("%d", &time_quantum);
+
+    if (time_quantum < 1 || time_quantum > 10) {
+        printf("타임 퀀텀은 1 이상 10 이하이어야 합니다. 기본값 2로 설정됩니다.\n");
+        time_quantum = 2;
+    }
+
     printf("|---- 시스템 초기화 완료 ----|\n\n\n");
 
     scheduler->process_cnt = process_cnt;
@@ -148,6 +154,7 @@ Scheduler* Simulate(Scheduler* scheduler) {
             schedule_priority_p(scheduler);
             break;
         case ROUND_ROBIN:
+            schedule_round_robin(scheduler);
             break;
         default:
             break;
@@ -371,6 +378,60 @@ void schedule_priority_np(Scheduler* scheduler) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
         }
         current_simulation_time++;  
+    }
+    end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
+}
+void schedule_round_robin(Scheduler* scheduler) {
+    int current_simulation_time = 0;
+    int terminated_process_cnt = 0;
+
+    int is_idle = 0;
+    GanttChart idle_item;
+
+    Process * current_process = NULL;
+    GanttChart chart_item;
+    int is_chart_item_initialized = 0;
+
+    // 소비되는 타임 추적
+    int time_quantum_remaining = scheduler->time_quantum;
+
+    while (terminated_process_cnt < scheduler->process_cnt) {
+        update_arrivals(scheduler, current_simulation_time);
+
+        update_idle_state(scheduler, &is_idle, &idle_item, current_simulation_time, current_process);
+
+        print_scheduling_debug_info(scheduler, current_process, current_simulation_time);
+
+        // 실행 중인 것 없거나, 타임퀀텀 소진
+        if (current_process == NULL || time_quantum_remaining == 0) {
+            if (current_process != NULL && current_process->state == RUNNING) {
+                current_process->state = READY;
+                scheduler->ready_queue[scheduler->ready_queue_cnt++] = current_process;
+
+                if (is_chart_item_initialized) {
+                    chart_item.end_time = current_simulation_time;
+                    scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
+                    is_chart_item_initialized = 0; 
+                }
+            }
+
+            if (scheduler->ready_queue_cnt > 0) {
+                current_process = scheduler->ready_queue[0];
+                remove_from_ready_queue(scheduler, 0);
+                start_process(current_process, &chart_item, &is_chart_item_initialized, current_simulation_time);
+                time_quantum_remaining = scheduler->time_quantum; // 재세팅
+            } else {
+                current_process = NULL;
+            }
+        }
+
+        process_io_operations(scheduler, &terminated_process_cnt);
+
+        if (current_process != NULL) {
+            execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
+            time_quantum_remaining--;
+        }
+        current_simulation_time++;
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
 }
