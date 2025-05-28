@@ -266,69 +266,28 @@ void schedule_fcfs(Scheduler* scheduler) {
     int is_chart_item_initialized = 0;
 
     while (terminated_process_cnt < scheduler->process_cnt) {
-         if (scheduler->ready_queue_cnt == 0) {
-           handle_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
-        } else {
-            end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
-        }
-
         // 도착한 프로세스 확인함
         update_arrivals(scheduler, current_simulation_time);
-        process_io_operations(scheduler, &terminated_process_cnt);
+        update_idle_state(scheduler, &is_idle, &idle_item, current_simulation_time, current_process);
 
-        if (current_process == NULL && scheduler->ready_queue_cnt > 0) {
-            current_process = scheduler->ready_queue[0]; // FCFS이므로 맨 앞에 있는 프로세스 선택
-            current_process->state = RUNNING;
+        print_scheduling_debug_info(scheduler, current_process, current_simulation_time);
 
-            chart_item.start_time = current_simulation_time;
-            sprintf(chart_item.process_name, "P%d", current_process->pid);
-            is_chart_item_initialized = 1;
-
-            remove_from_ready_queue(scheduler, 0);
-
-            //SECTION - 성능측정
-            if (current_process->is_first_execution) {
-                current_process->response_time = current_simulation_time;
-                current_process->is_first_execution = false;
+        if (is_new_process_need(scheduler, current_process)) {
+            Process* shortest_process = select_earlier_process(scheduler, current_process);
+            
+            if (shortest_process != NULL) {
+                start_process(shortest_process, &chart_item, &is_chart_item_initialized, current_simulation_time);
+                current_process = shortest_process;
             }
         }
+
+        process_io_operations(scheduler, &terminated_process_cnt);
         
         if (current_process != NULL) {
-            current_process->remaining_time -= 1; // CPU 실행 처리
-            printf("P%d가 실행되었습니다. (현재시간: %d)\n", current_process->pid, current_simulation_time);
-
-            int is_moved_to_waiting = false;
-            handle_io_task_of_process(current_process, scheduler, &is_moved_to_waiting);
-
-            if (is_moved_to_waiting) {
-                if (is_chart_item_initialized == 1) {
-                    chart_item.end_time = current_simulation_time + 1;
-                    scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
-                    is_chart_item_initialized = 0;
-                }
-               current_process = NULL;
-            } else if (current_process->remaining_time <= 0) {
-                current_process->state = TERMINATED;
-                terminated_process_cnt++;
-
-                if (is_chart_item_initialized == 1) {
-                    chart_item.end_time = current_simulation_time + 1;
-                    scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = chart_item;
-                    is_chart_item_initialized = 0;
-                }
-
-                //SECTION - 성능측정
-                current_process->completion_time = current_simulation_time + 1;
-                current_process->turnaround_time = current_process->completion_time - current_process->arrival_time;
-                current_process->waiting_time = current_process->turnaround_time - current_process->cpu_burst_time;
-
-                printf("P%d가 종료되었습니다. (현재시간: %d)\n", current_process->pid, current_simulation_time);
-                current_process = NULL;
-            }
+            execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
         } 
 
         current_simulation_time++;
-        printf("현재 시간: %d\n", current_simulation_time);
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
 }

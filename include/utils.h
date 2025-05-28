@@ -23,6 +23,7 @@ bool is_new_process_need(Scheduler* scheduler, Process* current_process);
 Process* select_shortest_process(Scheduler* scheduler, Process* current_process);
 Process* select_shortest_remaining_process(Scheduler* scheduler, Process* current_process);
 Process* select_highest_process(Scheduler* scheduler, Process* current_process);
+Process* select_earlier_process(Scheduler* scheduler, Process* current_process);
 void start_process(Process* process, GanttChart* chart_item, int* is_chart_item_initialized, int current_simulation_time);
 void execute_process(Process** current_process, Scheduler* scheduler, GanttChart* chart_item, int* is_chart_item_initialized, int current_simulation_time, int * terminated_process_cnt);
 
