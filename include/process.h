@@ -33,6 +33,8 @@ typedef struct {
     int io_request_times[MAX_IO_COUNT]; // TODO - IO 요청시점 중복처리할지?
     int io_burst_times[MAX_IO_COUNT];
     int current_io_idx;
+
+    int relative_cpu_execution_time; // io작업 기준 cpu에서 실행된 상대적 시간
     int io_remaining_time; // 현재 처리되는 io작업 기준임
     bool is_doing_io;
 } Process;

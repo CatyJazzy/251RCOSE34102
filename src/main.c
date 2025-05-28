@@ -27,6 +27,16 @@ int main() {
         }
     } 
 
+    /* 디버깅 용도 */
+    // main.c에서 간트 차트 출력 전
+    printf("DEBUG: 간트차트 데이터 확인\n");
+    for (int i = 0; i < scheduler->gantt_chart_cnt; i++) {
+    printf("인덱스 %d: %s (%d-%d)\n", 
+            i, scheduler->gantt_chart[i].process_name,
+            scheduler->gantt_chart[i].start_time,
+            scheduler->gantt_chart[i].end_time);
+    }
+
     // 간트차트 출력 부분
     for (int i=0; i<scheduler->gantt_chart_cnt; i++) {
         printf("-------");
@@ -45,8 +55,11 @@ int main() {
 
     for (int i=0; i<scheduler->gantt_chart_cnt; i++) {
         printf("%-7d", scheduler->gantt_chart[i].start_time);
+
+        if(i== scheduler->gantt_chart_cnt - 1) {
+            printf("%-6d\n", scheduler->gantt_chart[i].end_time);
+        }
     }
-    printf("%-6d\n", scheduler->gantt_chart[scheduler->gantt_chart_cnt - 1].end_time);
 
     return 0;
 }

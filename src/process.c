@@ -15,6 +15,7 @@ Process* create_process(int arrival_time, int cpu_burst_time, int priority) {
     process->cpu_burst_time = cpu_burst_time;
     process->remaining_time = cpu_burst_time; // 초기값은 전체 cpu burst time일 것임
     process->priority = priority;
+    process->relative_cpu_execution_time = 0;
 
     process->state = NEW;
 

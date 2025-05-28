@@ -18,6 +18,8 @@ void process_io_operations(Scheduler* scheduler, int* terminated_process_cnt) {
             // 완료되었을 때
             if (process->io_remaining_time <= 0) {
                 process->is_doing_io = false;
+                process->relative_cpu_execution_time = 0;
+                
                 
                 if(process->remaining_time > 0) {
                     scheduler->ready_queue[scheduler->ready_queue_cnt++] = process;
@@ -40,8 +42,7 @@ void process_io_operations(Scheduler* scheduler, int* terminated_process_cnt) {
 
 void handle_io_task_of_process(Process* process, Scheduler* scheduler, int* is_moved_to_waiting) {
      if (process->current_io_idx < process->io_count && 
-                    process->io_request_times[process->current_io_idx] == process->cpu_burst_time - process->remaining_time) {
-
+                    process->io_request_times[process->current_io_idx] == process->relative_cpu_execution_time) {
                 process->is_doing_io = true;
                 process->io_remaining_time = process->io_burst_times[process->current_io_idx];
                 process->state = WAITING;
@@ -73,4 +74,32 @@ void end_gantt_chart_idle(Scheduler* scheduler, int* is_idle, GanttChart* idle_i
         scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = *idle_item;
         *is_idle = 0;
     }
+}
+
+void print_scheduling_debug_info(Scheduler* scheduler, Process* current_process, int current_time) {
+    printf("\n=== 디버깅 정보 (시간: %d) ===\n", current_time);
+    if (current_process) {
+        printf("현재 실행 중인 프로세스: P%d\n", current_process->pid);
+        printf("- 남은 실행 시간: %d\n", current_process->remaining_time);
+        printf("- 우선순위: %d\n", current_process->priority);
+        printf("- 상태: %s\n", current_process->state == RUNNING ? "RUNNING" : "READY");
+    } else {
+        printf("현재 실행 중인 프로세스: 없음\n");
+    }
+
+    printf("\nReady Queue 상태:\n");
+    for (int i = 0; i < scheduler->ready_queue_cnt; i++) {
+        printf("P%d (우선순위: %d, 남은시간: %d)\n", 
+            scheduler->ready_queue[i]->pid,
+            scheduler->ready_queue[i]->priority,
+            scheduler->ready_queue[i]->remaining_time);
+    }
+
+    printf("\nWaiting Queue 상태:\n");
+    for (int i = 0; i < scheduler->waiting_queue_cnt; i++) {
+        printf("P%d (IO 남은시간: %d)\n", 
+            scheduler->waiting_queue[i]->pid,
+            scheduler->waiting_queue[i]->io_remaining_time);
+    }
+    printf("===========================\n\n");
 }
