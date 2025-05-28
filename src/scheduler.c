@@ -90,18 +90,23 @@ Scheduler* Config() {
             continue;
         }  
 
-        // 1 ~ min(cpu_burst_time, 3) 범위에서 랜덤으로 IO 요청 빈도 결정
-        int max_io_frequency = (scheduler->process_arr[i]->cpu_burst_time < MAX_IO_COUNT) ? 
-            scheduler->process_arr[i]->cpu_burst_time : MAX_IO_COUNT;
+        int max_possible_io_items = scheduler->process_arr[i]->cpu_burst_time - 1;
+
+        // 1 ~ min(cpu_burst_time, 3) 범위에서 랜덤 = IO 요청 개수
+        int max_io_frequency = (max_possible_io_items < MAX_IO_COUNT) ? 
+    max_possible_io_items : MAX_IO_COUNT;
+    
         scheduler->process_arr[i]->io_count = rand() % max_io_frequency + 1;
 
-        int possible_times[scheduler->process_arr[i]->cpu_burst_time - 1];
+        int possible_times[max_possible_io_items];
         for (int t=1; t<scheduler->process_arr[i]->cpu_burst_time; t++) {
             possible_times[t-1] = t;
         }
 
-        int remaining_count = scheduler->process_arr[i]->cpu_burst_time - 1;
+        int remaining_count = max_possible_io_items;
         for (int j=0; j<scheduler->process_arr[i]->io_count; j++) {
+            if (remaining_count <= 0) break;
+
             int random_index = rand() % remaining_count;
             scheduler->process_arr[i]->io_request_times[j] = possible_times[random_index];
 
@@ -198,7 +203,6 @@ void schedule_sjf_np(Scheduler* scheduler) {
         if (current_process != NULL) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
         }
-
         current_simulation_time++;   
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);

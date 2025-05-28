@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -I./include
+CFLAGS = -Wall -Wextra -I./include -g -fsanitize=address
 SRC_DIR = src
 OBJ_DIR = obj
 BIN_DIR = .
@@ -14,7 +14,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	@mkdir -p $(OBJ_DIR)
-	$(CC) $(OBJS) -o $@
+	$(CC) $(OBJS) -o $@ -fsanitize=address
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(OBJ_DIR)

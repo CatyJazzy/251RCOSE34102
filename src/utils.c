@@ -1,7 +1,7 @@
 #include "scheduler.h"
 #include <stdio.h>
 
-void updated_arrivals(Scheduler* scheduler, int current_time) {
+void update_arrivals(Scheduler* scheduler, int current_time) {
     for (int i=0; i<scheduler->process_cnt; i++) {
         if (scheduler->process_arr[i]->arrival_time == current_time && scheduler->process_arr[i]->state == NEW) {
             scheduler->ready_queue[scheduler->ready_queue_cnt++] = scheduler->process_arr[i];
@@ -82,12 +82,12 @@ Process* select_shortest_process(Scheduler* scheduler, Process* current_process)
         return NULL;
     }
 
-    Process* shortest_process = scheduler->ready_queue[0]; // 임시 설정
+    Process* shortest_process = scheduler->ready_queue[0];
     int shortest_process_idx = 0;
 
-    for (int i=0; i<scheduler->ready_queue_cnt; i++) {
+    for (int i=1; i<scheduler->ready_queue_cnt; i++) {
         if (scheduler->ready_queue[i]->cpu_burst_time < shortest_process->cpu_burst_time) {
-            shortest_process = scheduler->ready_queue[i]; // Shorted Job 프로세스 선택
+            shortest_process = scheduler->ready_queue[i];
             shortest_process_idx = i;
         } else if (scheduler->ready_queue[i]->cpu_burst_time == shortest_process->cpu_burst_time) {
             // 동점 시 도착시간 기준
@@ -98,9 +98,7 @@ Process* select_shortest_process(Scheduler* scheduler, Process* current_process)
         }
     }
     
-    if (scheduler->ready_queue_cnt > 0 && shortest_process_idx < scheduler->ready_queue_cnt) {
-        remove_from_ready_queue(scheduler, shortest_process_idx);
-    }
+    remove_from_ready_queue(scheduler, shortest_process_idx);
     return shortest_process;
 }
 
@@ -169,15 +167,6 @@ void end_gantt_chart_idle(Scheduler* scheduler, int* is_idle, GanttChart* idle_i
         idle_item->end_time = current_simulation_time;
         scheduler->gantt_chart[scheduler->gantt_chart_cnt++] = *idle_item;
         *is_idle = 0;
-    }
-}
-
-void update_arrivals(Scheduler* scheduler, int current_time) {
-    for (int i=0; i<scheduler->process_cnt; i++) {
-        if (scheduler->process_arr[i]->arrival_time == current_time && scheduler->process_arr[i]->state == NEW) {
-            scheduler->ready_queue[scheduler->ready_queue_cnt++] = scheduler->process_arr[i];
-            scheduler->process_arr[i]->state = READY;
-        }
     }
 }
 
