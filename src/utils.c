@@ -19,6 +19,9 @@ void process_io_operations(Scheduler* scheduler, int* terminated_process_cnt) {
             if (process->io_remaining_time <= 0) {
                 process->is_doing_io = false;
                 
+            
+                process->total_io_time_spent += process->io_burst_times[process->current_io_idx - 1];
+                
                 if(process->remaining_time > 0) {
                     scheduler->ready_queue[scheduler->ready_queue_cnt++] = process;
                     process->state = READY;
@@ -227,7 +230,10 @@ void execute_process(Process** current_process, Scheduler* scheduler, GanttChart
             // SECTION - 성능측정
             (*current_process)->completion_time = current_simulation_time + 1;
             (*current_process)->turnaround_time = (*current_process)->completion_time - (*current_process)->arrival_time;
-            (*current_process)->waiting_time = (*current_process)->turnaround_time - (*current_process)->cpu_burst_time;
+      
+            (*current_process)->waiting_time = (*current_process)->turnaround_time - 
+                                             (*current_process)->cpu_burst_time - 
+                                             (*current_process)->total_io_time_spent;
         }
         
         printf("P%d가 종료되었습니다. (현재시간: %d)\n", (*current_process)->pid, current_simulation_time);

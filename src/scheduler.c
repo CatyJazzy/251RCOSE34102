@@ -189,7 +189,6 @@ void schedule_sjf_np(Scheduler* scheduler) {
     
 
     while(terminated_process_cnt < scheduler->process_cnt) {
-
         update_arrivals(scheduler, current_simulation_time);
 
         update_idle_state(scheduler, &is_idle, &idle_item, current_simulation_time, current_process);
@@ -210,7 +209,7 @@ void schedule_sjf_np(Scheduler* scheduler) {
         if (current_process != NULL) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
         }
-        current_simulation_time++;   
+        current_simulation_time++; 
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
 }
@@ -293,7 +292,6 @@ void schedule_fcfs(Scheduler* scheduler) {
         if (current_process != NULL) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
         } 
-
         current_simulation_time++;
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
@@ -377,7 +375,7 @@ void schedule_priority_np(Scheduler* scheduler) {
         if (current_process != NULL) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
         }
-        current_simulation_time++;  
+        current_simulation_time++; 
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
 }
