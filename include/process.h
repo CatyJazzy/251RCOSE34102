@@ -36,7 +36,7 @@ typedef struct {
 
     int io_remaining_time; // 현재 처리되는 io작업 기준임
     bool is_doing_io;
-    int total_io_time_spent; 
+    int total_io_time_spent;
 } Process;
 
 Process * create_process(int pid, int arrival_time, int cpu_burst_time, int priority);

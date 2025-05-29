@@ -230,10 +230,6 @@ void execute_process(Process** current_process, Scheduler* scheduler, GanttChart
             // SECTION - 성능측정
             (*current_process)->completion_time = current_simulation_time + 1;
             (*current_process)->turnaround_time = (*current_process)->completion_time - (*current_process)->arrival_time;
-      
-            (*current_process)->waiting_time = (*current_process)->turnaround_time - 
-                                             (*current_process)->cpu_burst_time - 
-                                             (*current_process)->total_io_time_spent;
         }
         
         printf("P%d가 종료되었습니다. (현재시간: %d)\n", (*current_process)->pid, current_simulation_time);
@@ -283,4 +279,10 @@ void print_scheduling_debug_info(Scheduler* scheduler, Process* current_process,
             scheduler->waiting_queue[i]->io_remaining_time);
     }
     printf("===========================\n\n");
+}
+
+void update_waiting_time(Scheduler* scheduler) {
+    for (int i=0; i<scheduler->ready_queue_cnt; i++) {
+        scheduler->ready_queue[i]->waiting_time += 1;
+    }
 }

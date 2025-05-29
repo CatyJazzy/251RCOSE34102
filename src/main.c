@@ -38,7 +38,7 @@ int main() {
     // }
 
 
-    printf("\n--------- 시뮬레이션 프로세스 정보 ---------");
+    printf("\n--------- 시뮬레이션 프로세스 정보 ---------\n");
     for (int i = 0; i < scheduler->process_cnt; i++) {
         print_process(scheduler->process_arr[i]);
     }

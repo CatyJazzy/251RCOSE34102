@@ -209,6 +209,7 @@ void schedule_sjf_np(Scheduler* scheduler) {
         if (current_process != NULL) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
         }
+        update_waiting_time(scheduler);
         current_simulation_time++; 
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
@@ -256,6 +257,7 @@ void schedule_sjf_p(Scheduler* scheduler) {
         if (current_process != NULL) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
         }
+        update_waiting_time(scheduler);
         current_simulation_time++;
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
@@ -292,6 +294,7 @@ void schedule_fcfs(Scheduler* scheduler) {
         if (current_process != NULL) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
         } 
+        update_waiting_time(scheduler);
         current_simulation_time++;
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
@@ -338,6 +341,7 @@ void schedule_priority_p(Scheduler* scheduler) {
         if (current_process != NULL) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
         }
+        update_waiting_time(scheduler);
         current_simulation_time++;
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
@@ -375,6 +379,7 @@ void schedule_priority_np(Scheduler* scheduler) {
         if (current_process != NULL) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
         }
+        update_waiting_time(scheduler);
         current_simulation_time++; 
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
@@ -429,6 +434,7 @@ void schedule_round_robin(Scheduler* scheduler) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
             time_quantum_remaining--;
         }
+        update_waiting_time(scheduler);
         current_simulation_time++;
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
