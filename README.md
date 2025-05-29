@@ -43,8 +43,6 @@
 - **Waiting Time**: 프로세스가 Ready Queue에서 대기한 시간
 - **Turnaround Time**: 프로세스 생성부터 종료까지의 총 시간
 - **Response Time**: 프로세스가 처음 CPU를 할당받기까지의 시간
-- **CPU Utilization**: CPU 사용률
-- **Throughput**: 단위 시간당 처리된 프로세스 수
 
 ## 🛠️ 프로젝트 구조
 
@@ -77,7 +75,7 @@
 ### 3. 스케줄러 모듈 구현 (진행 중)
 - [x] 스케줄러 기본 구조 설계
 - [x] 스케줄링 알고리즘 구현
-- [ ] 간트 차트 생성 및 출력
+- [x] 간트 차트 생성 및 출력
 
 ### 4. 유틸리티 모듈 구현
 - [x] I/O 작업 처리
@@ -95,7 +93,7 @@
 make
 
 # 실행
-./scheduler
+./cpu_scheduler
 
 # 정리
 make clean
