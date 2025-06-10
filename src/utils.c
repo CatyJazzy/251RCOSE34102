@@ -88,18 +88,18 @@ Process* select_earlier_process(Scheduler* scheduler, Process* current_process) 
     Process* early_process = scheduler->ready_queue[0];
     int early_process_idx = 0;
 
-    for (int i=1; i<scheduler->ready_queue_cnt; i++) {
-        if (scheduler->ready_queue[i]->arrival_time < early_process->arrival_time) {
-            early_process = scheduler->ready_queue[i];
-            early_process_idx = i;
-        } else if (scheduler->ready_queue[i]->arrival_time == early_process->arrival_time) {
-            // 동점 시 id 기준
-            if (scheduler->ready_queue[i]->pid < early_process->pid) {
-                early_process = scheduler->ready_queue[i];
-                early_process_idx = i;
-            }
-        }
-    }
+    // for (int i=1; i<scheduler->ready_queue_cnt; i++) {
+    //     if (scheduler->ready_queue[i]->arrival_time < early_process->arrival_time) {
+    //         early_process = scheduler->ready_queue[i];
+    //         early_process_idx = i;
+    //     } else if (scheduler->ready_queue[i]->arrival_time == early_process->arrival_time) {
+    //         // 동점 시 id 기준
+    //         if (scheduler->ready_queue[i]->pid < early_process->pid) {
+    //             early_process = scheduler->ready_queue[i];
+    //             early_process_idx = i;
+    //         }
+    //     }
+    // }
     
     remove_from_ready_queue(scheduler, early_process_idx);
     return early_process;
