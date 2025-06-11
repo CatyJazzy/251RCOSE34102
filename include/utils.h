@@ -26,6 +26,6 @@ Process* select_highest_process(Scheduler* scheduler, Process* current_process);
 Process* select_earlier_process(Scheduler* scheduler, Process* current_process);
 void start_process(Process* process, GanttChart* chart_item, int* is_chart_item_initialized, int current_simulation_time);
 void execute_process(Process** current_process, Scheduler* scheduler, GanttChart* chart_item, int* is_chart_item_initialized, int current_simulation_time, int * terminated_process_cnt);
-void update_waiting_time(Scheduler* scheduler);
+void update_waiting_time(Scheduler* scheduler, int current_time);
 
 #endif 

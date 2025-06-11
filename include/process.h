@@ -37,6 +37,7 @@ typedef struct {
     int io_remaining_time; // 현재 처리되는 io작업 기준임
     bool is_doing_io;
     int total_io_time_spent;
+    bool will_be_ready;  // 다음 시간에 ready queue에 추가될 예정임을 표시 (I/O작업 처리때문에 추가함)
 } Process;
 
 Process * create_process(int pid, int arrival_time, int cpu_burst_time, int priority);

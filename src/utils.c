@@ -2,10 +2,19 @@
 #include <stdio.h>
 
 void update_arrivals(Scheduler* scheduler, int current_time) {
+    // 새로운 프로세스 도착 처리
     for (int i=0; i<scheduler->process_cnt; i++) {
         if (scheduler->process_arr[i]->arrival_time == current_time && scheduler->process_arr[i]->state == NEW) {
             scheduler->ready_queue[scheduler->ready_queue_cnt++] = scheduler->process_arr[i];
             scheduler->process_arr[i]->state = READY;
+        }
+    }
+
+    // ANCHOR (데모 이후 수정 06.11) 추가한 부분 I/O 작업이 완료되어 ready queue에 추가될 예정인 프로세스 처리
+    for (int i=0; i<scheduler->process_cnt; i++) {
+        if (scheduler->process_arr[i]->will_be_ready) {
+            scheduler->ready_queue[scheduler->ready_queue_cnt++] = scheduler->process_arr[i];
+            scheduler->process_arr[i]->will_be_ready = false;
         }
     }
 }
@@ -19,12 +28,12 @@ void process_io_operations(Scheduler* scheduler, int* terminated_process_cnt) {
             if (process->io_remaining_time <= 0) {
                 process->is_doing_io = false;
                 
-            
                 process->total_io_time_spent += process->io_burst_times[process->current_io_idx - 1];
                 
                 if(process->remaining_time > 0) {
-                    scheduler->ready_queue[scheduler->ready_queue_cnt++] = process;
+                    // ANCHOR (06.11 - 데모 이후 수정) 다음 시간 단위에 ready queue에 추가하기 위해 상태만 변경하도록 수정
                     process->state = READY;
+                    process->will_be_ready = true;  // 다음 시간에 ready queue에 추가될 예정임을 표시
                 } else if (process->current_io_idx >= process->io_count) {
                     process->state = TERMINATED;
                     (*terminated_process_cnt)++;
@@ -232,6 +241,14 @@ void execute_process(Process** current_process, Scheduler* scheduler, GanttChart
             (*current_process)->turnaround_time = (*current_process)->completion_time - (*current_process)->arrival_time;
         }
         
+        // ready queue에서 제거
+        for (int i = 0; i < scheduler->ready_queue_cnt; i++) {
+            if (scheduler->ready_queue[i]->pid == (*current_process)->pid) {
+                remove_from_ready_queue(scheduler, i);
+                break;
+            }
+        }
+        
         printf("P%d가 종료되었습니다. (현재시간: %d)\n", (*current_process)->pid, current_simulation_time);
         *current_process = NULL;
     }
@@ -281,8 +298,15 @@ void print_scheduling_debug_info(Scheduler* scheduler, Process* current_process,
     printf("===========================\n\n");
 }
 
-void update_waiting_time(Scheduler* scheduler) {
+void update_waiting_time(Scheduler* scheduler, int current_time) {
+    printf("\n=== 대기 시간 업데이트 (현재 시간: %d) ===\n", current_time);
+    printf("Ready Queue의 프로세스들:\n");
+    
     for (int i=0; i<scheduler->ready_queue_cnt; i++) {
         scheduler->ready_queue[i]->waiting_time += 1;
+        printf("P%d - 대기 시간: %d\n", 
+            scheduler->ready_queue[i]->pid,
+            scheduler->ready_queue[i]->waiting_time);
     }
+    printf("===========================\n");
 }

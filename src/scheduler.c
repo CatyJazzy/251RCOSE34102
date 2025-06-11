@@ -169,6 +169,7 @@ void Evaluation(Scheduler* scheduler) {
 
     for (int i=0; i<scheduler->process_cnt; i++) {
         total_waiting_time += scheduler->process_arr[i]->waiting_time;
+        printf("P%d의 대기 시간: %d\n", scheduler->process_arr[i]->pid, scheduler->process_arr[i]->waiting_time); // 대기시간 오류 fix 용도
         total_turnaround_time += scheduler->process_arr[i]->turnaround_time;
     }
     printf("평균 Waiting Time: %.2f\n", (float)total_waiting_time / scheduler->process_cnt);
@@ -208,8 +209,8 @@ void schedule_sjf_np(Scheduler* scheduler) {
 
         if (current_process != NULL) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
+            update_waiting_time(scheduler, current_simulation_time);
         }
-        update_waiting_time(scheduler);
         current_simulation_time++; 
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
@@ -256,8 +257,9 @@ void schedule_sjf_p(Scheduler* scheduler) {
 
         if (current_process != NULL) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
+            update_waiting_time(scheduler, current_simulation_time);
         }
-        update_waiting_time(scheduler);
+        
         current_simulation_time++;
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
@@ -293,8 +295,8 @@ void schedule_fcfs(Scheduler* scheduler) {
         
         if (current_process != NULL) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
+            update_waiting_time(scheduler, current_simulation_time);
         } 
-        update_waiting_time(scheduler);
         current_simulation_time++;
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
@@ -340,8 +342,8 @@ void schedule_priority_p(Scheduler* scheduler) {
 
         if (current_process != NULL) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
+            update_waiting_time(scheduler, current_simulation_time);
         }
-        update_waiting_time(scheduler);
         current_simulation_time++;
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
@@ -378,8 +380,8 @@ void schedule_priority_np(Scheduler* scheduler) {
 
         if (current_process != NULL) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
+            update_waiting_time(scheduler, current_simulation_time);
         }
-        update_waiting_time(scheduler);
         current_simulation_time++; 
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
@@ -433,8 +435,8 @@ void schedule_round_robin(Scheduler* scheduler) {
         if (current_process != NULL) {
             execute_process(&current_process, scheduler, &chart_item, &is_chart_item_initialized, current_simulation_time, &terminated_process_cnt);
             time_quantum_remaining--;
+            update_waiting_time(scheduler, current_simulation_time);
         }
-        update_waiting_time(scheduler);
         current_simulation_time++;
     }
     end_gantt_chart_idle(scheduler, &is_idle, &idle_item, current_simulation_time);
