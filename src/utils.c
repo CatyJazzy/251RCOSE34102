@@ -2,24 +2,45 @@
 #include <stdio.h>
 
 void update_arrivals(Scheduler* scheduler, int current_time) {
-    // 새로운 프로세스 도착 처리
+    // ANCHOR (데모 이후 수정 06.11) I/O 작업이 완료되어 ready queue에 추가될 예정인 프로세스들을 수집
+    Process* completed_io_processes[scheduler->process_cnt];
+    int completed_count = 0;
+    
+    for (int i=0; i<scheduler->process_cnt; i++) {
+        if (scheduler->process_arr[i]->will_be_ready > 0) {
+            completed_io_processes[completed_count++] = scheduler->process_arr[i];
+        }
+    }
+    
+    // will_be ready 순서 번호대로 정렬 (작을수록 우선)
+    for (int i=0; i<completed_count-1; i++) {
+        for (int j=i+1; j<completed_count; j++) {
+            if (completed_io_processes[i]->will_be_ready > completed_io_processes[j]->will_be_ready) {
+                Process* temp = completed_io_processes[i];
+                completed_io_processes[i] = completed_io_processes[j];
+                completed_io_processes[j] = temp;
+            }
+        }
+    }
+    
+    // 정렬된 순서대로 ready queue에 추가함
+    for (int i=0; i<completed_count; i++) {
+        scheduler->ready_queue[scheduler->ready_queue_cnt++] = completed_io_processes[i];
+        completed_io_processes[i]->will_be_ready = 0; // 초기화
+    }
+
+    // 새로운 프로세스 도착 처리 (I/O 완료 프로세스 다음에 처리)
     for (int i=0; i<scheduler->process_cnt; i++) {
         if (scheduler->process_arr[i]->arrival_time == current_time && scheduler->process_arr[i]->state == NEW) {
             scheduler->ready_queue[scheduler->ready_queue_cnt++] = scheduler->process_arr[i];
             scheduler->process_arr[i]->state = READY;
         }
     }
-
-    // ANCHOR (데모 이후 수정 06.11) 추가한 부분 I/O 작업이 완료되어 ready queue에 추가될 예정인 프로세스 처리
-    for (int i=0; i<scheduler->process_cnt; i++) {
-        if (scheduler->process_arr[i]->will_be_ready) {
-            scheduler->ready_queue[scheduler->ready_queue_cnt++] = scheduler->process_arr[i];
-            scheduler->process_arr[i]->will_be_ready = false;
-        }
-    }
 }
 
 void process_io_operations(Scheduler* scheduler, int* terminated_process_cnt) {
+    static int ready_order = 1; // I/O 완료 순서를 위한 static 변수
+    
     for (int i=0; i<scheduler->waiting_queue_cnt; i++) {
             Process* process = scheduler->waiting_queue[i]; // io작업 처리할 프로세스
             process->io_remaining_time--;
@@ -28,12 +49,10 @@ void process_io_operations(Scheduler* scheduler, int* terminated_process_cnt) {
             if (process->io_remaining_time <= 0) {
                 process->is_doing_io = false;
                 
-                process->total_io_time_spent += process->io_burst_times[process->current_io_idx - 1];
-                
                 if(process->remaining_time > 0) {
                     // ANCHOR (06.11 - 데모 이후 수정) 다음 시간 단위에 ready queue에 추가하기 위해 상태만 변경하도록 수정
                     process->state = READY;
-                    process->will_be_ready = true;  // 다음 시간에 ready queue에 추가될 예정임을 표시
+                    process->will_be_ready = ready_order++;  // 순서 번호 할당 (1부터 시작, 0은 false를 의미함.)
                 } else if (process->current_io_idx >= process->io_count) {
                     process->state = TERMINATED;
                     (*terminated_process_cnt)++;
@@ -96,19 +115,6 @@ Process* select_earlier_process(Scheduler* scheduler, Process* current_process) 
 
     Process* early_process = scheduler->ready_queue[0];
     int early_process_idx = 0;
-
-    // for (int i=1; i<scheduler->ready_queue_cnt; i++) {
-    //     if (scheduler->ready_queue[i]->arrival_time < early_process->arrival_time) {
-    //         early_process = scheduler->ready_queue[i];
-    //         early_process_idx = i;
-    //     } else if (scheduler->ready_queue[i]->arrival_time == early_process->arrival_time) {
-    //         // 동점 시 id 기준
-    //         if (scheduler->ready_queue[i]->pid < early_process->pid) {
-    //             early_process = scheduler->ready_queue[i];
-    //             early_process_idx = i;
-    //         }
-    //     }
-    // }
     
     remove_from_ready_queue(scheduler, early_process_idx);
     return early_process;
@@ -131,6 +137,12 @@ Process* select_shortest_process(Scheduler* scheduler, Process* current_process)
             if (scheduler->ready_queue[i]->arrival_time < shortest_process->arrival_time) {
                 shortest_process = scheduler->ready_queue[i];
                 shortest_process_idx = i;
+            } else if (scheduler->ready_queue[i]->arrival_time == shortest_process->arrival_time) {
+                // 도착시간도 동일하면 프로세스 ID가 더 작은 것 선택
+                if (scheduler->ready_queue[i]->pid < shortest_process->pid) {
+                    shortest_process = scheduler->ready_queue[i];
+                    shortest_process_idx = i;
+                }
             }
         }
     }
@@ -156,6 +168,12 @@ Process* select_shortest_remaining_process(Scheduler* scheduler, Process* curren
             if (scheduler->ready_queue[i]->arrival_time < shortest_process->arrival_time) {
                 shortest_process = scheduler->ready_queue[i];
                 shortest_process_idx = i;
+            } else if (scheduler->ready_queue[i]->arrival_time == shortest_process->arrival_time) {
+                // 도착시간도 동일하면 프로세스 ID가 더 작은 것 선택
+                if (scheduler->ready_queue[i]->pid < shortest_process->pid) {
+                    shortest_process = scheduler->ready_queue[i];
+                    shortest_process_idx = i;
+                }
             }
         }
     }
@@ -187,6 +205,12 @@ Process* select_highest_process(Scheduler* scheduler, Process* current_process) 
             if (scheduler->ready_queue[i]->arrival_time < highest_process->arrival_time) {
                 highest_process = scheduler->ready_queue[i];
                 highest_process_idx = i;
+            } else if (scheduler->ready_queue[i]->arrival_time == highest_process->arrival_time) {
+                // 도착시간도 동일하면 프로세스 ID가 더 작은 것 선택
+                if (scheduler->ready_queue[i]->pid < highest_process->pid) {
+                    highest_process = scheduler->ready_queue[i];
+                    highest_process_idx = i;
+                }
             }
         }
     }

@@ -28,7 +28,7 @@ Process* create_process(int pid, int arrival_time, int cpu_burst_time, int prior
     process->current_io_idx = 0;
     process->io_remaining_time = 0;
     process->is_doing_io = false;
-    process->total_io_time_spent = 0;
+    process->will_be_ready = 0;
 
     return process;
 }

@@ -30,14 +30,13 @@ typedef struct {
 
     /* IO 작업 처리 */
     int io_count; // 전체 io 작업횟수 (최대3번)
-    int io_request_times[MAX_IO_COUNT]; // TODO - IO 요청시점 중복처리할지?
+    int io_request_times[MAX_IO_COUNT]; // TODO - IO 요청시점 중복처리할지 -> (중복 X)
     int io_burst_times[MAX_IO_COUNT];
     int current_io_idx;
 
     int io_remaining_time; // 현재 처리되는 io작업 기준임
     bool is_doing_io;
-    int total_io_time_spent;
-    bool will_be_ready;  // 다음 시간에 ready queue에 추가될 예정임을 표시 (I/O작업 처리때문에 추가함)
+    int will_be_ready;  // 다음 시간에 ready queue에 추가될 순서 (0=추가안됨, 1,2,3...=순서)
 } Process;
 
 Process * create_process(int pid, int arrival_time, int cpu_burst_time, int priority);
